@@ -34,8 +34,7 @@ __global__ void morphpool_cuda_forward_kernel(
     const scalar_t* __restrict__ Input,
     const scalar_t* __restrict__ Mask,
     scalar_t* __restrict__ output,
-    scalar_t* __restrict__ output_idx_x,
-    scalar_t* __restrict__ output_idx_y,
+    scalar_t* __restrict__ output_idx,
     size_t batch_size,
     size_t input_channels,
     size_t height,
@@ -61,6 +60,11 @@ __global__ void morphpool_cuda_forward_kernel(
                      + m * height * width
                      + h * width
                      + w;
+            const int output_index_idx = batch * input_channels * num_morph * height * width * 2
+                     + c * num_morph * height * width * 2
+                     + m * height * width * 2
+                     + h * width * 2
+                     + w * 2;
             scalar_t max_val = 0.;
             int max_y = 0;
             int max_x = 0;
@@ -89,8 +93,8 @@ __global__ void morphpool_cuda_forward_kernel(
             }
 
             output[output_index] = max_val;
-            output_idx_y[output_index] = max_y;
-            output_idx_x[output_index] = max_x;
+            output_idx[output_index_idx] = max_y;
+            output_idx[output_index_idx + 1] = max_x;
         }
     }
 }
@@ -100,8 +104,7 @@ __global__ void morphpool_cuda_backward_kernel(
     const scalar_t* __restrict__ Grad,
     const scalar_t* __restrict__ Input,
     const scalar_t* __restrict__ Mask,
-    const scalar_t* __restrict__ Indices_x,
-    const scalar_t* __restrict__ Indices_y,
+    const scalar_t* __restrict__ Indices,
     const scalar_t* __restrict__ Output_fwd,
     scalar_t* __restrict__ output,
     size_t batch_size,
@@ -142,8 +145,13 @@ __global__ void morphpool_cuda_backward_kernel(
                                      + y * width
                                      + x;
 
-                            const int max_y = Indices_y[output_fwd_index];
-                            const int max_x = Indices_x[output_fwd_index];
+                            const int output_index_idx = batch * input_channels * num_morph * height * width * 2
+                                     + c * num_morph * height * width * 2
+                                     + m * height * width * 2
+                                     + y * width * 2
+                                     + x * 2;
+                            const int max_y = Indices[output_index_idx];
+                            const int max_x = Indices[output_index_idx + 1];
 
                             const int grad_index = batch * input_channels * num_morph * height * width
                                      + c * num_morph * height * width
@@ -171,9 +179,7 @@ __global__ void morphpool3d_cuda_forward_kernel(
     const scalar_t* __restrict__ Input,
     const scalar_t* __restrict__ Mask,
     scalar_t* __restrict__ output,
-    scalar_t* __restrict__ output_idx_x,
-    scalar_t* __restrict__ output_idx_y,
-    scalar_t* __restrict__ output_idx_z,
+    scalar_t* __restrict__ output_idx,
     size_t batch_size,
     size_t input_channels,
     size_t depth,
@@ -202,6 +208,12 @@ __global__ void morphpool3d_cuda_forward_kernel(
                      + d * height * width
                      + h * width
                      + w;
+            const int output_index_idx = batch * input_channels * num_morph * depth * height * width * 3
+                     + c * num_morph * depth * height * width * 3
+                     + m * depth * height * width * 3
+                     + d * height * width * 3
+                     + h * width * 3
+                     + w * 3;
             scalar_t max_val = 0.;
             int max_z = 0;
             int max_y = 0;
@@ -237,9 +249,9 @@ __global__ void morphpool3d_cuda_forward_kernel(
             }
 
             output[output_index] = max_val;
-            output_idx_x[output_index] = max_x;
-            output_idx_y[output_index] = max_y;
-            output_idx_z[output_index] = max_z;
+            output_idx[output_index_idx] = max_z;
+            output_idx[output_index_idx + 1] = max_y;
+            output_idx[output_index_idx + 2] = max_x;
         }
     }
 }
@@ -249,9 +261,7 @@ __global__ void morphpool3d_cuda_backward_kernel(
     const scalar_t* __restrict__ Grad,
     const scalar_t* __restrict__ Input,
     const scalar_t* __restrict__ Mask,
-    const scalar_t* __restrict__ Indices_x,
-    const scalar_t* __restrict__ Indices_y,
-    const scalar_t* __restrict__ Indices_z,
+    const scalar_t* __restrict__ Indices,
     const scalar_t* __restrict__ Output_fwd,
     scalar_t* __restrict__ output,
     size_t batch_size,
@@ -298,9 +308,16 @@ __global__ void morphpool3d_cuda_backward_kernel(
                                              + z * height * width
                                              + y * width
                                              + x;
-                                    const int max_x = Indices_x[output_fwd_index];
-                                    const int max_y = Indices_y[output_fwd_index];
-                                    const int max_z = Indices_z[output_fwd_index];
+
+                                    const int output_index_idx = batch * input_channels * num_morph * depth *height * width * 3
+                                             + c * num_morph * depth * height * width * 3
+                                             + m * depth * height * width * 3
+                                             + z * height * width * 3
+                                             + y * width * 3
+                                             + x * 3;
+                                    const int max_z = Indices[output_index_idx];
+                                    const int max_y = Indices[output_index_idx + 1];
+                                    const int max_x = Indices[output_index_idx + 2];
 
                                     const int grad_index = batch * input_channels * num_morph * depth * height * width
                                              + c * num_morph * depth * height * width
@@ -333,9 +350,7 @@ std::vector<at::Tensor> morphpool_cuda_forward(
     int kernel_size) {
 
     auto output = at::zeros_like(input);
-    auto output_idx_x = at::zeros_like(input);
-    auto output_idx_y = at::zeros_like(input);
-    auto output_idx_z = at::zeros_like(input);
+    auto output_idx = at::zeros_like(input);
 
     if (mask.dim() == 3) {
         const auto batch = input.size(0);
@@ -347,11 +362,9 @@ std::vector<at::Tensor> morphpool_cuda_forward(
         const auto batch_size = vInput.size(0);
 
         output.resize_({batch, channel, num_morph, height, width});
-        output_idx_x.resize_({batch, channel, num_morph, height, width});
-        output_idx_y.resize_({batch, channel, num_morph, height, width});
+        output_idx.resize_({batch, channel, num_morph, height, width, 2});
         output.fill_(0);
-        output_idx_x.fill_(0);
-        output_idx_y.fill_(0);
+        output_idx.fill_(0);
 
         const int threads = CUDA_NUM_THREADS;
         const dim3 blocks((height * width + threads - 1) / threads, batch_size);
@@ -364,8 +377,7 @@ std::vector<at::Tensor> morphpool_cuda_forward(
                 vInput.data<scalar_t>(),
                 mask.data<scalar_t>(),
                 output.data<scalar_t>(),
-                output_idx_x.data<scalar_t>(),
-                output_idx_y.data<scalar_t>(),
+                output_idx.data<scalar_t>(),
                 batch_size,
                 channel,
                 height,
@@ -387,13 +399,9 @@ std::vector<at::Tensor> morphpool_cuda_forward(
             const auto batch_size = vInput.size(0);
 
             output.resize_({batch, channel, num_morph, depth, height, width});
-            output_idx_x.resize_({batch, channel, num_morph, depth, height, width});
-            output_idx_y.resize_({batch, channel, num_morph, depth, height, width});
-            output_idx_z.resize_({batch, channel, num_morph, depth, height, width});
+            output_idx.resize_({batch, channel, num_morph, depth, height, width, 3});
             output.fill_(0);
-            output_idx_x.fill_(0);
-            output_idx_y.fill_(0);
-            output_idx_z.fill_(0);
+            output_idx.fill_(0);
 
             const int threads = CUDA_NUM_THREADS;
             const dim3 blocks((depth * height * width + threads - 1) / threads, batch_size);
@@ -406,9 +414,7 @@ std::vector<at::Tensor> morphpool_cuda_forward(
                     vInput.data<scalar_t>(),
                     mask.data<scalar_t>(),
                     output.data<scalar_t>(),
-                    output_idx_x.data<scalar_t>(),
-                    output_idx_y.data<scalar_t>(),
-                    output_idx_z.data<scalar_t>(),
+                    output_idx.data<scalar_t>(),
                     batch_size,
                     channel,
                     depth,
@@ -420,16 +426,14 @@ std::vector<at::Tensor> morphpool_cuda_forward(
 
         }
     }
-    return {output, output_idx_x, output_idx_y, output_idx_z};
+    return {output, output_idx};
 }
 
 std::vector<at::Tensor> morphpool_cuda_backward(
     at::Tensor grad,
     at::Tensor input,
     at::Tensor mask,
-    at::Tensor input_indices_x,
-    at::Tensor input_indices_y,
-    at::Tensor input_indices_z,
+    at::Tensor input_indices,
     at::Tensor output_fwd,
     int num_morph,
     int kernel_size) {
@@ -457,8 +461,7 @@ std::vector<at::Tensor> morphpool_cuda_backward(
                 grad.data<scalar_t>(),
                 vInput.data<scalar_t>(),
                 mask.data<scalar_t>(),
-                input_indices_x.data<scalar_t>(),
-                input_indices_y.data<scalar_t>(),
+                input_indices.data<scalar_t>(),
                 output_fwd.data<scalar_t>(),
                 output.data<scalar_t>(),
                 batch_size,
@@ -496,9 +499,7 @@ std::vector<at::Tensor> morphpool_cuda_backward(
                     grad.data<scalar_t>(),
                     vInput.data<scalar_t>(),
                     mask.data<scalar_t>(),
-                    input_indices_x.data<scalar_t>(),
-                    input_indices_y.data<scalar_t>(),
-                    input_indices_z.data<scalar_t>(),
+                    input_indices.data<scalar_t>(),
                     output_fwd.data<scalar_t>(),
                     output.data<scalar_t>(),
                     batch_size,

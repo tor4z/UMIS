@@ -11,6 +11,8 @@ from data.datasets import Directory_Image_Train, Single_Image_Eval
 from networks.segmentation import SegmentNet3D_Resnet
 from networks.utils import GradXYZ, norm_range
 
+import config
+
 from utils import Saver, TensorboardSummary
 
 # args
@@ -29,17 +31,23 @@ parser.add_argument('--range-norm', action='store_true',
                     help='range-norm')
 parser.add_argument('--train-dataset', type=str, default='VesselNN', metavar='N',
                     help='Training dataset name')
-parser.add_argument('--train-images-path', type=str, default='/path/to/VesselNN/train/images', metavar='N',
+parser.add_argument('--train-images-path', type=str, default='~/Data/VesselNN/train/images', metavar='N',
                     help='Training dataset images path')
-parser.add_argument('--train-labels-path', type=str, default='/path/to/VesselNN/train/labels', metavar='N',
+parser.add_argument('--train-labels-path', type=str, default='~/Data/VesselNN/train/labels', metavar='N',
                     help='Training dataset labels path')
-parser.add_argument('--val-image-path', type=str, default='/path/to/VesselNN/train/image', metavar='N',
+parser.add_argument('--val-image-path', type=str, default='~/Data/VesselNN/train/image', metavar='N',
                     help='Validation image path')
-parser.add_argument('--val-label-path', type=str, default='/path/to/VesselNN/train/label', metavar='N',
+parser.add_argument('--val-label-path', type=str, default='~/Data/VesselNN/train/label', metavar='N',
                     help='Validation label path')
 
 parser.add_argument('--validate', action='store_true',
                     help='validate')
+
+parser.add_argument('--smooth-iter', type=int, default=3,
+                    help='ACWE Smooth')
+
+
+parser.add_argument('--gpu-ids', nargs='+', type=int, default=None, help='GPU IDs')
 
 # checking point
 parser.add_argument('--resume', type=str, default=None,
@@ -74,16 +82,19 @@ dataset_val = Single_Image_Eval(image_path=args.val_image_path,
 dataloader_val = DataLoader(dataset_val, batch_size=1, shuffle=False, num_workers=2)
 
 # Train
-model = SegmentNet3D_Resnet().cuda()
-grad_fn = GradXYZ().cuda()
-mp3d = MorphPool3D().cuda()
+
+device = config.device
+
+model = SegmentNet3D_Resnet().cuda(device)
+grad_fn = GradXYZ().cuda(device)
+mp3d = MorphPool3D().cuda(device)
 
 optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
 
 # DataParallel
-model = torch.nn.DataParallel(model)
-grad_fn = torch.nn.DataParallel(grad_fn)
-mp3d = torch.nn.DataParallel(mp3d)
+model = torch.nn.DataParallel(model, device_ids=args.gpu_ids)
+grad_fn = torch.nn.DataParallel(grad_fn, device_ids=args.gpu_ids)
+mp3d = torch.nn.DataParallel(mp3d, device_ids=args.gpu_ids)
 
 if args.resume:
     if not os.path.isfile(args.resume):
@@ -104,7 +115,7 @@ for epoch in range(args.epochs):
                     dynamic_ncols=True)
     for i, (data, _) in enumerate(iterator):
         # To CUDA
-        data = data.cuda()
+        data = data.cuda(device)
 
         # Misc
         dimsum = list(range(1, len(data.shape)))
@@ -120,16 +131,16 @@ for epoch in range(args.epochs):
         c0 = (data * seg).sum(dim=dimsum, keepdim=True) / (area + 1e-8)
         c1 = (data * (1 - seg)).sum(dim=dimsum, keepdim=True) / (area_m + 1e-8)
 
+        # Image force
+        image_force = (args.lmd1 * (data - c0).pow(2) - args.lmd2 * (data - c1).pow(2)) * grad_seg
+
         # Smooth
         seg = mp3d(seg)
         seg = mp3d(seg, True)
         seg = mp3d(seg)
         seg = mp3d(seg, True)
-        seg = mp3d(seg)
-        seg = mp3d(seg, True)
-
-        # Image force
-        image_force = (args.lmd1 * (data - c0).pow(2) - args.lmd2 * (data - c1).pow(2)) * grad_seg
+        # seg = mp3d(seg)
+        # seg = mp3d(seg, True)
 
         # Reconstruction loss
         rec_loss = F.mse_loss(rec, data) + grad_rec.mean()
@@ -163,7 +174,8 @@ for epoch in range(args.epochs):
         loss += 1e-3 * etropy_loss
         loss += 1e-3 * var_loss
         loss += 1e-6 * rec_loss
-        loss += 5e-8 * area.mean()
+        area_mean = area.mean()
+        loss += 5e-8 * area_mean
 
         # Optimize
         optimizer.zero_grad()
@@ -172,12 +184,23 @@ for epoch in range(args.epochs):
 
         # Print loss
         iterator.set_description(
-            'Epoch [{epoch}/{epochs}] :: Train Loss {loss:.4f}'.format(epoch=epoch, epochs=args.epochs,
+            'Epoch [{epoch}/{epochs}] :: Train Loss {loss:.4f}'.format(epoch=epoch,
+                                                                       epochs=args.epochs,
                                                                        loss=loss.item()))
-        writer.add_scalar('train/{loss_type}/total_loss_iter', loss.item(), epoch * len(dataloader) + i)
+
+        niter = epoch * len(dataloader) + i
+        writer.add_scalar('train/total/loss_iter', loss.item(), niter)
+        writer.add_scalar('train/image_foce_loss/loss_iter', image_foce_loss.item(), niter)
+        writer.add_scalar('train/rank_loss/loss_iter', rank_loss.item(), niter)
+        writer.add_scalar('train/etropy_loss/loss_iter', etropy_loss.item(), niter)
+        writer.add_scalar('train/var_loss/loss_iter', var_loss.item(), niter)
+        writer.add_scalar('train/rec_loss/loss_iter', rec_loss.item(), niter)
+        writer.add_scalar('train/area_mean/loss_iter', area_mean.item(), niter)
 
         if i % (len(dataloader) // 10):
             summary.visualize_image(writer, data, seg, epoch * len(dataloader) + i)
+    
+    writer.flush()
 
     if not epoch % 1:
         saver.save_checkpoint({
@@ -218,8 +241,8 @@ for epoch in range(args.epochs):
 
                 for index, (data, lables) in enumerate(iterator):
                     # To CUDA
-                    data = data.cuda()
-                    lables = lables.cuda()
+                    data = data.cuda(device)
+                    lables = lables.cuda(device)
 
                     # Network
                     seg, _ = model(data)
@@ -229,8 +252,8 @@ for epoch in range(args.epochs):
                     seg = mp3d(seg, True)
                     seg = mp3d(seg)
                     seg = mp3d(seg, True)
-                    seg = mp3d(seg)
-                    seg = mp3d(seg, True)
+                    # seg = mp3d(seg)
+                    # seg = mp3d(seg, True)
 
                     for batch_idx, val in enumerate(seg[:, 0]):
                         out_i = index * dataloader_val.batch_size + batch_idx
@@ -250,7 +273,7 @@ for epoch in range(args.epochs):
                         x: x + dataset_val.lables_shape[2]] += val.cpu().data.numpy()
 
                 output = output / idx_sum
-                output = torch.Tensor(output).unsqueeze(0).cuda()
+                output = torch.Tensor(output).unsqueeze(0).cuda(device)
                 input_gt = torch.Tensor(input_gt).unsqueeze(0)
 
                 # Normalize

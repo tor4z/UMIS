@@ -165,18 +165,111 @@ class SegmentNet3D_Resnet(nn.Module):
 
         dc1 = self.deconv1(c4)
         cat = torch.cat((c3, dc1), 1)
-        cat = F.interpolate(cat, size=(x.shape[2] // 8, x.shape[3] // 8, x.shape[4] // 8), mode='trilinear')
+        cat = F.interpolate(cat, size=(x.shape[2] // 8, x.shape[3] // 8, x.shape[4] // 8),
+                            mode='trilinear', align_corners=False)
         dc2 = self.deconv2(cat)
-        _c2 = F.interpolate(c2, size=dc2.shape[2:], mode='trilinear')
+        _c2 = F.interpolate(c2, size=dc2.shape[2:], mode='trilinear', align_corners=False)
         cat = torch.cat((_c2, dc2), 1)
         out = self.deconv3(cat)
-        out = F.interpolate(out, size=x.shape[2:], mode='trilinear')
+        out = F.interpolate(out, size=x.shape[2:], mode='trilinear', align_corners=False)
         out = self.out_conv(out)
 
         dcr1 = self.deconv1_rec(c4)
         dcr2 = self.deconv2_rec(torch.cat((c3, dcr1), 1))
         rec = self.deconv3_rec(torch.cat((c2, dcr2), 1))
-        rec = F.interpolate(rec, size=x.shape[2:], mode='trilinear')
+        rec = F.interpolate(rec, size=x.shape[2:], mode='trilinear', align_corners=False)
+        rec = self.out_conv(rec)
+
+        return out, rec
+
+
+class SegmentNet2D_Resnet(nn.Module):
+    def __init__(self):
+        super(SegmentNet2D_Resnet, self).__init__()
+
+        self.base = resnet34()
+        self.du = nn.Dropout(0.2)
+
+        # Seg
+        self.deconv1 = nn.Sequential(
+            nn.ConvTranspose2d(512, 64, 4, 2, 1),
+            nn.BatchNorm2d(64),
+            nn.ReLU(),
+            nn.ConvTranspose2d(64, 64, (1, 3, 3), 1, padding=(0, 1, 1)),
+            nn.BatchNorm2d(64),
+            nn.ReLU()
+        )
+        self.deconv2 = nn.Sequential(
+            nn.ConvTranspose2d(256 + 64, 32, 4, 2, 1),
+            nn.BatchNorm2d(32),
+            nn.ReLU(),
+            nn.ConvTranspose2d(32, 32, (1, 3, 3), 1, padding=(0, 1, 1)),
+            nn.BatchNorm2d(32),
+            nn.ReLU()
+        )
+        self.deconv3 = nn.Sequential(
+            nn.ConvTranspose2d(128 + 32, 8, 4, 2, 1),
+            nn.BatchNorm2d(8),
+            nn.ReLU(),
+            nn.ConvTranspose2d(8, 8, (1, 3, 3), 1, padding=(0, 1, 1)),
+            nn.BatchNorm2d(8),
+            nn.ReLU()
+        )
+        self.out_conv = nn.Sequential(
+            nn.ConvTranspose2d(8, 1, 3, 1, 1),
+            nn.Sigmoid()
+        )
+
+        # Rec
+        self.deconv1_rec = nn.Sequential(
+            nn.ConvTranspose2d(512, 64, 4, 2, 1),
+            nn.BatchNorm2d(64),
+            nn.ReLU(),
+            nn.ConvTranspose2d(64, 64, 1, 1),
+            nn.BatchNorm2d(64),
+            nn.ReLU()
+        )
+        self.deconv2_rec = nn.Sequential(
+            nn.ConvTranspose2d(256 + 64, 32, 4, 2, 1),
+            nn.BatchNorm2d(32),
+            nn.ReLU(),
+            nn.ConvTranspose2d(32, 32, 1, 1),
+            nn.BatchNorm2d(32),
+            nn.ReLU()
+        )
+        self.deconv3_rec = nn.Sequential(
+            nn.ConvTranspose2d(128 + 32, 8, 4, 2, 1),
+            nn.BatchNorm2d(8),
+            nn.ReLU(),
+            nn.ConvTranspose2d(8, 8, 1, 1),
+            nn.BatchNorm2d(8),
+            nn.ReLU()
+        )
+        self.rec_conv = nn.Sequential(
+            nn.ConvTranspose2d(8, 1, 3, 1, 1),
+            nn.Sigmoid()
+        )
+
+    def forward(self, x):
+        c1, c2, c3, c4 = self.base(x)
+
+        c4 = self.du(c4)
+
+        dc1 = self.deconv1(c4)
+        cat = torch.cat((c3, dc1), 1)
+        cat = F.interpolate(cat, size=(x.shape[2] // 8, x.shape[3] // 8, x.shape[4] // 8),
+                            mode='trilinear', align_corners=False)
+        dc2 = self.deconv2(cat)
+        _c2 = F.interpolate(c2, size=dc2.shape[2:], mode='trilinear', align_corners=False)
+        cat = torch.cat((_c2, dc2), 1)
+        out = self.deconv3(cat)
+        out = F.interpolate(out, size=x.shape[2:], mode='trilinear', align_corners=False)
+        out = self.out_conv(out)
+
+        dcr1 = self.deconv1_rec(c4)
+        dcr2 = self.deconv2_rec(torch.cat((c3, dcr1), 1))
+        rec = self.deconv3_rec(torch.cat((c2, dcr2), 1))
+        rec = F.interpolate(rec, size=x.shape[2:], mode='trilinear', align_corners=False)
         rec = self.out_conv(rec)
 
         return out, rec

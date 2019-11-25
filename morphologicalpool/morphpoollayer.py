@@ -11,15 +11,15 @@ class MorphPoolFunction(Function):
         with torch.no_grad():
             _kernel_size = torch.Tensor([kernel_size]).float().cuda()
             _num_morph = torch.Tensor([num_morph]).float().cuda()
-        (outputs, outputs_indices) = morphpool_cuda.forward(input, mask, _num_morph, _kernel_size)
-        ctx.save_for_backward(input, mask, outputs_indices, outputs, _num_morph, _kernel_size)
+        (outputs, outputs_indices_x, outputs_indices_y, outputs_indices_z) = morphpool_cuda.forward(input, mask, _num_morph, _kernel_size)
+        ctx.save_for_backward(input, mask, outputs_indices_x, outputs_indices_y, outputs_indices_z, outputs, _num_morph, _kernel_size)
 
         return outputs
 
     @staticmethod
     def backward(ctx, grad):
-        input, mask, outputs_indices, outputs, _num_morph, _kernel_size = ctx.saved_variables
-        (grad_out,) = morphpool_cuda.backward(grad.contiguous(), input, mask, outputs_indices, outputs, _num_morph,
+        input, mask, outputs_indices_x, outputs_indices_y, outputs_indices_z, outputs, _num_morph, _kernel_size = ctx.saved_variables
+        (grad_out,) = morphpool_cuda.backward(grad.contiguous(), input, mask, outputs_indices_x, outputs_indices_y, outputs_indices_z, outputs, _num_morph,
                                               _kernel_size)
         return (grad_out, None, None, None, None)
 

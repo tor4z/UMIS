@@ -3,6 +3,7 @@ from torch.utils.data import Dataset
 import glob
 import tifffile as T
 from libtiff import TIFF
+import cv2
 import numpy as np
 
 
@@ -82,6 +83,23 @@ def smart_padding(img, data_shape, lables_shape, stride):
     return img
 
 
+def imread(path):
+    suffix = path.split('.')[-1]
+    if suffix == 'tif':
+        try:
+            img = T.imread(path)
+        except:
+            img = []
+            tif = TIFF.open(path)
+            for _image in tif.iter_images():
+                img.append(_image)
+            img = np.stack(img, 0)
+    else:
+        img = cv2.imread(path)
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    return img
+
+
 class Single_Image_Eval(Dataset):
     def __init__(self,
                  image_path='HaftJavaherian_DeepVess2018_GroundTruthImage.tif',
@@ -91,22 +109,9 @@ class Single_Image_Eval(Dataset):
                  stride=(1, 1, 1),
                  range_norm=False):
         self.range_norm = range_norm
-        try:
-            img = T.imread(image_path)
-        except:
-            img = []
-            tif = TIFF.open(image_path)
-            for _image in tif.iter_images():
-                img.append(_image)
-            img = np.stack(img, 0)
-        try:
-            lbl = T.imread(label_path)
-        except:
-            lbl = []
-            tif = TIFF.open(label_path)
-            for _lable in tif.iter_images():
-                lbl.append(_lable)
-            lbl = np.stack(lbl, 0)
+
+        img = imread(image_path)
+        lbl = imread(label_path)
 
         img = smart_padding(img, data_shape, lables_shape, stride)
         lbl = smart_padding(lbl, data_shape, lables_shape, stride)
@@ -195,10 +200,11 @@ class Directory_Image_Train(Dataset):
                  data_shape=(7, 33, 33),
                  lables_shape=(1, 4, 4),
                  stride=(1, 1, 1),
+                 suffix='tif',
                  range_norm=False):
         self.range_norm = range_norm
-        images = sorted(glob.glob(images_path + '/*tif'))
-        labels = sorted(glob.glob(labels_path + '/*tif'))
+        images = sorted(glob.glob(images_path + '/*.' + suffix))
+        labels = sorted(glob.glob(labels_path + '/*.' + suffix))
 
         self.org_shape = []
         self.shape = []
@@ -218,22 +224,8 @@ class Directory_Image_Train(Dataset):
         self.lbl_x = []
 
         for img_path, lbl_path in zip(images, labels):
-            try:
-                img = T.imread(img_path)
-            except:
-                img = []
-                tif = TIFF.open(img_path)
-                for _image in tif.iter_images():
-                    img.append(_image)
-                img = np.stack(img, 0)
-            try:
-                lbl = T.imread(lbl_path)
-            except:
-                lbl = []
-                tif = TIFF.open(lbl_path)
-                for _lable in tif.iter_images():
-                    lbl.append(_lable)
-                lbl = np.stack(lbl, 0)
+            img = imread(img_path)
+            lbl = imread(lbl_path)
 
             img = smart_padding(img, data_shape, lables_shape, stride)
             lbl = smart_padding(lbl, data_shape, lables_shape, stride)

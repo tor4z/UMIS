@@ -14,7 +14,9 @@ std::vector<at::Tensor> morphpool_cuda_backward(
     at::Tensor grad,
     at::Tensor input,
     at::Tensor mask,
-    at::Tensor input_indices,
+    at::Tensor input_indices_x,
+    at::Tensor input_indices_y,
+    at::Tensor input_indices_z,
     at::Tensor output_fwd,
     int num_morph,
     int kernel_size);
@@ -40,21 +42,27 @@ std::vector<at::Tensor> morphpool_backward(
     at::Tensor grad,
     at::Tensor input,
     at::Tensor mask,
-    at::Tensor input_indices,
+    at::Tensor input_indices_x,
+    at::Tensor input_indices_y,
+    at::Tensor input_indices_z,
     at::Tensor output_fwd,
     int num_morph,
     int kernel_size) {
   CHECK_INPUT(grad);
   CHECK_INPUT(input);
   CHECK_INPUT(mask);
-  CHECK_INPUT(input_indices);
+  CHECK_INPUT(input_indices_x);
+  CHECK_INPUT(input_indices_y);
+  CHECK_INPUT(input_indices_z);
   CHECK_INPUT(output_fwd);
 
   return morphpool_cuda_backward(
       grad,
       input,
       mask,
-      input_indices,
+      input_indices_x,
+      input_indices_y,
+      input_indices_z,
       output_fwd,
       num_morph,
       kernel_size);

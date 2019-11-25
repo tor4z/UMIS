@@ -8,6 +8,7 @@ class GradXYZ(nn.Module):
         super(GradXYZ, self).__init__()
 
         self.padding = 1
+        # 3x3x3
         self.register_buffer('dX', torch.Tensor([[[0, 0, 0],
                                                   [0, 0, 0],
                                                   [0, 0, 0]],

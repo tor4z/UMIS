@@ -4,6 +4,8 @@ import torch.nn.functional as F
 from torch.autograd import Variable
 from functools import partial
 
+import config
+
 __all__ = [
     'ResNet', 'resnet10', 'resnet18', 'resnet34', 'resnet50', 'resnet101',
     'resnet152', 'resnet200'
@@ -27,7 +29,7 @@ def downsample_basic_block(x, planes, stride):
         out.size(0), planes - out.size(1), out.size(2), out.size(3),
         out.size(4)).zero_()
     if isinstance(out.data, torch.cuda.FloatTensor):
-        zero_pads = zero_pads.cuda()
+        zero_pads = zero_pads.cuda(config.device)
 
     out = Variable(torch.cat([out.data, zero_pads], dim=1))
 
@@ -134,7 +136,7 @@ class ResNet(nn.Module):
 
         for m in self.modules():
             if isinstance(m, nn.Conv3d):
-                m.weight = nn.init.kaiming_normal(m.weight, mode='fan_out')
+                m.weight = nn.init.kaiming_normal_(m.weight, mode='fan_out')
             elif isinstance(m, nn.BatchNorm3d):
                 m.weight.data.fill_(1)
                 m.bias.data.zero_()

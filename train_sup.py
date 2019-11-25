@@ -23,17 +23,19 @@ parser.add_argument('--range-norm', action='store_true',
                     help='range-norm')
 parser.add_argument('--train-dataset', type=str, default='VesselNN', metavar='N',
                     help='Training dataset name')
-parser.add_argument('--train-images-path', type=str, default='/path/to/VesselNN/train/images', metavar='N',
+parser.add_argument('--train-images-path', type=str, default='~/Data/VesselNN/train/images', metavar='N',
                     help='Training dataset images path')
-parser.add_argument('--train-labels-path', type=str, default='/path/to/VesselNN/train/labels', metavar='N',
+parser.add_argument('--train-labels-path', type=str, default='~/Data/VesselNN/train/labels', metavar='N',
                     help='Training dataset labels path')
-parser.add_argument('--val-image-path', type=str, default='/path/to/VesselNN/train/image', metavar='N',
+parser.add_argument('--val-image-path', type=str, default='~/Data/VesselNN/valid/image.tif', metavar='N',
                     help='Validation image path')
-parser.add_argument('--val-label-path', type=str, default='/path/to/VesselNN/train/label', metavar='N',
+parser.add_argument('--val-label-path', type=str, default='~/Data/VesselNN/valid/label.tif', metavar='N',
                     help='Validation label path')
 
 parser.add_argument('--validate', action='store_true',
                     help='validate')
+
+parser.add_argument('--gpu-ids', nargs='+', type=int, default=None, help='GPU IDs')
 
 # checking point
 parser.add_argument('--resume', type=str, default=None,
@@ -77,7 +79,7 @@ CE = torch.nn.CrossEntropyLoss().cuda()
 optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
 
 # DataParallel
-model = torch.nn.DataParallel(model)
+model = torch.nn.DataParallel(model, device_ids=args.gpu_ids)
 
 if args.resume:
     if not os.path.isfile(args.resume):

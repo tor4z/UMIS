@@ -4,17 +4,24 @@ import torch
 from collections import OrderedDict
 import glob
 
+import datetime
+
 class Saver(object):
 
     def __init__(self, args):
+        self.date_str = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
         self.args = args
         self.directory = os.path.join('run', args.train_dataset, args.checkname)
         self.runs = sorted(glob.glob(os.path.join(self.directory, 'experiment_*')))
         run_id = int(self.runs[-1].split('_')[-1]) + 1 if self.runs else 0
 
-        self.experiment_dir = os.path.join(self.directory, 'experiment_{}'.format(str(run_id)))
         if not os.path.exists(self.experiment_dir):
             os.makedirs(self.experiment_dir)
+
+    @property
+    def experiment_dir(self):
+        dir = os.path.join(self.directory, 'experiment_{}'.format(self.date_str))
+        return dir
 
     def save_checkpoint(self, state, is_best, filename='checkpoint.pth.tar'):
         """Saves checkpoint to disk"""
