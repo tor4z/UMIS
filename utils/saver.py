@@ -29,9 +29,11 @@ class Saver(object):
         self.latest_filename = os.path.join(self.dir, self.LATEST_FILE)
         self.config_filename = os.path.join(self.dir, self.CONFIG_FILE)
 
-        self.pred_best = 1000000
+        self.best_pred = 1000000
 
     def gen_checkpoint_filename(self, epoch):
+        if epoch < 0:
+            raise ValueError('ecoch={}, epoch should be >= 0'.format(epoch))
         path = os.path.join(self.dir, self.CHECKPOINT_FILE.format(epoch))
         if os.path.exists(path):
             if self.force:
@@ -93,4 +95,9 @@ class Saver(object):
 
     def load(self, obj, path):
         self.check_dir(path)
-        torch.load(obj, path)
+        state = torch.load(obj, path)
+        self.post_load(state)
+        return state
+
+    def post_load(self, state):
+        self.best_pred = state['pred']
