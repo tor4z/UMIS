@@ -102,103 +102,71 @@ class Trainner(nn.Module):
         self.optimizer.step()
 
         if self.global_steps % self.opt.visual_freq == 0:
-            self.visualize()
+            loss_scalars = {
+                'loss': loss.item(),
+                'image_foce_loss': image_foce_loss.item(),
+                'rank_loss': rank_loss.item(),
+                'etropy_loss': etropy_loss.item(),
+                'var_loss': var_loss.item(),
+                'rec_loss': rec_loss.item(),
+                'area_mean': area_mean.item()}
 
-        return loss
+            self.summary.add_image(writer, data, seg, self.global_steps)
+            self.summary.add_scalars('main', scalars, self.global_steps)
 
     def train_epoch(self, dataloader, epoch):
+        self.epoch = epoch
         self.model.train()
         iterator = tqdm(dataloader,
                         leave=True,
                         dynamic_ncols=True)
-        
+
         for i, (data, _) in enumerate(iterator):
             self.global_steps = epoch * len(dataloader) + i
-
-            loss = self.train_iter(data)
-
+            self.train_iter(data)
             iterator.set_description(
-                'Epoch [{epoch}/{epochs}] :: Train Loss {loss:.4f}'.format(
-                    epoch=epoch, epochs=self.opt.epochs, loss=loss.item()))            
+                'Epoch [{epoch}/{epochs}]'.format(
+                    epoch=epoch, epochs=self.opt.epochs))
 
-    def validate(self):
-        if args.validate:
-            # Validate
-            with torch.no_grad():
-                model.eval()
-                iterator = tqdm(dataloader_val,
-                                leave=True,
-                                dynamic_ncols=True,
-                                desc='Validation ::')
-                input = dataset_val.img[
-                        dataset_val.effective_lable_idx[0][0]:dataset_val.effective_lable_idx[0][1],
-                        dataset_val.effective_lable_idx[1][0]:dataset_val.effective_lable_idx[1][1],
-                        dataset_val.effective_lable_idx[2][0]:dataset_val.effective_lable_idx[2][1]
-                        ]
-                input_gt = dataset_val.lbl[
-                           dataset_val.effective_lable_idx[0][0]:dataset_val.effective_lable_idx[0][1],
-                           dataset_val.effective_lable_idx[1][0]:dataset_val.effective_lable_idx[1][1],
-                           dataset_val.effective_lable_idx[2][0]:dataset_val.effective_lable_idx[2][1]
-                           ]
-                input_gt = input_gt // input_gt.max()
+        # self.validate()
 
-                output = np.zeros((1,
-                                   dataset_val.effective_lable_shape[0],
-                                   dataset_val.effective_lable_shape[1],
-                                   dataset_val.effective_lable_shape[2]))
-                idx_sum = np.zeros((1,
-                                    dataset_val.effective_lable_shape[0],
-                                    dataset_val.effective_lable_shape[1],
-                                    dataset_val.effective_lable_shape[2]))
+    def validate_one(self, data, label):
+        with torch.no_grad():
+            self.model.eval()
+            data = data.to(self.opt.device)
+            lables = lables.to(self.opt.device)
 
-                for index, (data, lables) in enumerate(iterator):
-                    # To CUDA
-                    data = data.cuda(device)
-                    lables = lables.cuda(device)
+            # Network
+            seg, rec = self.model(data)
 
-                    # Network
-                    seg, _ = model(data)
+            # Smooth
+            for i in range(self.opt.smooth_iter):
+                seg = self.morph(seg)
+                seg = self.morph(seg, True)
 
-                    # Smooth
-                    seg = mp3d(seg)
-                    seg = mp3d(seg, True)
-                    seg = mp3d(seg)
-                    seg = mp3d(seg, True)
-                    # seg = mp3d(seg)
-                    # seg = mp3d(seg, True)
-
-                    for batch_idx, val in enumerate(seg[:, 0]):
-                        out_i = index * dataloader_val.batch_size + batch_idx
-                        z, y, x = np.unravel_index(out_i, (dataset_val.dz, dataset_val.dy, dataset_val.dx))
-                        z = z * dataset_val.stride[0]
-                        y = y * dataset_val.stride[1]
-                        x = x * dataset_val.stride[2]
-
-                        idx_sum[0,
-                        z: z + dataset_val.lables_shape[0],
-                        y: y + dataset_val.lables_shape[1],
-                        x: x + dataset_val.lables_shape[2]] += 1
-
-                        output[0,
-                        z: z + dataset_val.lables_shape[0],
-                        y: y + dataset_val.lables_shape[1],
-                        x: x + dataset_val.lables_shape[2]] += val.cpu().data.numpy()
-
-                output = output / idx_sum
-                output = torch.Tensor(output).unsqueeze(0).cuda(device)
-                input_gt = torch.Tensor(input_gt).unsqueeze(0)
-
-                # Normalize
-                output = norm_range(output)
-
-            # Plot
-            input = torch.Tensor(input).unsqueeze(0).unsqueeze(0)
-            summary.visualize_image_val(writer, input, output, epoch)
-            
+        # Plot
+        input = torch.Tensor(input).unsqueeze(0).unsqueeze(0)
+        summary.visualize_image_val(writer, input, output, epoch)
+        
         self.save_checkpoint()
 
-    def save_checkpoint(self):
-        pass
+    def save_checkpoint(self, pred):
+        self.saver.save_checkpoint({
+            'epoch': self.epoch,
+            'state_dict': self.model.module.state_dict(),
+            'optimizer': self.optimizer.state_dict(),
+            'pred': pred})
 
-    def visualize(self):
-        pass
+    def load_checkpoint(self, epoch=None, best=False):
+        # load latest model by default
+        if epoch is not None and best:
+            raise ValueError('Ambiguous: epoch is not None best is true')
+        if epoch is None and not best:
+            state = self.saver.load_latest()
+        elif epoch is not None:
+            state = self.saver.load_checkpoint(epoch)
+        else:
+            state = self.saver.load_best()
+        
+        self.model.module.load_state_dict(state['state_dict'])
+        self.optimizer.load_state_dict(state['optimizer'])
