@@ -6,10 +6,15 @@ from functools import partial
 
 import config
 
-__all__ = [
-    'ResNet', 'resnet10', 'resnet18', 'resnet34', 'resnet50', 'resnet101',
-    'resnet152', 'resnet200'
-]
+resnets = {
+    'resnet10': resnet10, 
+    'resnet18': resnet18,
+    'resnet34': resnet34,
+    'resnet50': resnet50,
+    'resnet101': resnet101,
+    'resnet152': resnet152,
+    'resnet200': resnet200,
+}
 
 
 def conv3x3x3(in_planes, out_planes, stride=1):
@@ -248,3 +253,10 @@ def resnet200(**kwargs):
     """
     model = ResNet(Bottleneck, [3, 24, 36, 3], **kwargs)
     return model
+
+
+def resnet(opt, **kwargs):
+    resnet = opt.resnet
+    if not resnet in resnets.keys():
+        raise ValueError('{} not exists.'.format(resnet))
+    return resnets[resnet](**kwargs)

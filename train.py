@@ -2,7 +2,6 @@ import torch
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from tqdm import tqdm
-import argparse
 import os
 import numpy as np
 
@@ -14,47 +13,6 @@ from networks.utils import GradXYZ, norm_range
 import config
 
 from utils import Saver, TensorboardSummary
-
-# args
-parser = argparse.ArgumentParser(description='PyTorch Unsupervised Vessels Segmentation')
-parser.add_argument('--epochs', type=int, default=100, metavar='N',
-                    help='Number of epochs')
-parser.add_argument('--batch-size', type=int, default=6, metavar='N',
-                    help='#CUDA * batch_size')
-parser.add_argument('--lr', type=float, default=1e-4, metavar='N',
-                    help='Learning rate')
-parser.add_argument('--lmd1', type=int, default=1, metavar='N',
-                    help='lambda 1')
-parser.add_argument('--lmd2', type=int, default=2, metavar='N',
-                    help='lambda 2')
-parser.add_argument('--range-norm', action='store_true',
-                    help='range-norm')
-parser.add_argument('--train-dataset', type=str, default='VesselNN', metavar='N',
-                    help='Training dataset name')
-parser.add_argument('--train-images-path', type=str, default='~/Data/VesselNN/train/images', metavar='N',
-                    help='Training dataset images path')
-parser.add_argument('--train-labels-path', type=str, default='~/Data/VesselNN/train/labels', metavar='N',
-                    help='Training dataset labels path')
-parser.add_argument('--val-image-path', type=str, default='~/Data/VesselNN/train/image', metavar='N',
-                    help='Validation image path')
-parser.add_argument('--val-label-path', type=str, default='~/Data/VesselNN/train/label', metavar='N',
-                    help='Validation label path')
-
-parser.add_argument('--validate', action='store_true',
-                    help='validate')
-
-parser.add_argument('--smooth-iter', type=int, default=3,
-                    help='ACWE Smooth')
-
-
-parser.add_argument('--gpu-ids', nargs='+', type=int, default=None, help='GPU IDs')
-
-# checking point
-parser.add_argument('--resume', type=str, default=None,
-                    help='put the path to resuming file if needed')
-parser.add_argument('--checkname', type=str, default='VesselNN_Unsupervised',
-                    help='set the checkpoint name')
-args = parser.parse_args()
 
 # Define Saver
 saver = Saver(args)

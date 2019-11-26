@@ -47,3 +47,21 @@ class MorphPool3D(nn.Module):
         else:
             x = -MorphPoolFunction.apply(-input, self.morph, self.morph.shape[0], 3)
             return x.max(2)[0]
+
+class MorphPool2D(nn.Module):
+    def __init__(self):
+        super(MorphPool2D, self).__init__()
+        _P2 = [np.eye(3),
+            np.array([[0, 1, 0]] * 3),
+            np.flipud(np.eye(3)),
+            np.rot90([[0, 1, 0]] * 3)]
+
+        self.register_buffer('morph', torch.Tensor(_P3))
+
+    def forward(self, input, erode=False):
+        if not erode:
+            x = MorphPoolFunction.apply(input, self.morph, self.morph.shape[0], 3)
+            return x.min(2)[0]
+        else:
+            x = -MorphPoolFunction.apply(-input, self.morph, self.morph.shape[0], 3)
+            return x.max(2)[0]

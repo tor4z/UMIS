@@ -4,11 +4,9 @@ import torch
 from collections import OrderedDict
 import glob
 
-import datetime
-
 class Saver(object):
 
-    def __init__(self, args):
+    def __init__(self, opt):
         self.date_str = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
         self.args = args
         self.directory = os.path.join('run', args.train_dataset, args.checkname)

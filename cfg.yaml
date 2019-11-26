@@ -1,0 +1,37 @@
+# hyper parameter
+epochs: 1000
+batch_size: 64
+lr: 1.E-4
+lmd1: 1
+lmd2: 2
+range_norm: true
+resnet: resnet34
+
+# dataset
+train_path: ''
+test_path: ''
+
+# morphological
+smooth_iter: 3
+
+# set prepare work
+summary_dir: runs
+saver_dir: storages
+workers: 3
+diveces: 
+  - 0
+  - 1
+  - 2
+  - 3
+  - 4
+  - 5
+  - 6
+  - 7
+resume: false
+runtime_id: null
+force: false
+
+# images settings
+image_x: 500
+image_y: 600
+image_z: 20     # if image is 2D, set image_z to 0
