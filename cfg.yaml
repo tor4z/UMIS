@@ -7,6 +7,7 @@ lmd2: 2
 range_norm: true
 dim: 3
 resnet: resnet34
+thredhold: 0.9
 
 # dataset
 dataset: hela
@@ -19,6 +20,7 @@ smooth_iter: 3
 # set prepare work
 summary_dir: runs
 saver_dir: storages
+disp_images: 5
 shuffle: true
 num_workers: 3
 visual_freq: 5000
