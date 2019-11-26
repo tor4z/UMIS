@@ -29,6 +29,8 @@ class Saver(object):
         self.latest_filename = os.path.join(self.dir, self.LATEST_FILE)
         self.config_filename = os.path.join(self.dir, self.CONFIG_FILE)
 
+        self.pred_best = 1000000
+
     def gen_checkpoint_filename(self, epoch):
         path = os.path.join(self.dir, self.CHECKPOINT_FILE.format(epoch))
         if os.path.exists(path):
@@ -36,27 +38,38 @@ class Saver(object):
                 os.remove(path)
             else:
                 raise RuntimeError('{} already exists.'.format(path))
+        return path
 
-        return path 
-
-
-    def save_checkpoint(self, state, epoch):
-        pass
+    def save_checkpoint(self, state):
+        epoch = state['epoch']
+        path = self.gen_checkpoint_filename(epoch)
+        self.save(state, path)
+        self.save_latest(path)
+        if pred < self.best_pred:
+            self.save_best(path)
 
     def load_checkpoint(self, epoch):
-        pass
+        path = self.gen_checkpoint_filename(epoch)
+        state = self.load(path)
+        return state
 
     def save_latest(self, path):
-        pass
+        if os.path.exists(self.latest_filename):
+            os.remove(self.latest_filename)
+        shutil.copyfile(path, self.latest_filename)
 
     def load_latest(self):
-        pass
+        state = self.load(self.latest_filename)
+        return state
 
     def save_best(self, path):
-        pass
+        if os.path.exists(self.best_filename):
+            os.remove(self.best_filename)
+        shutil.copyfile(path, self.best_filename)
 
     def load_best(self):
-        pass
+        state = self.load(self.best_filename)
+        return state
 
     def save_config(self, opt):
         cfg = opt.dump()
