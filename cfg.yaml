@@ -5,9 +5,11 @@ lr: 1.E-4
 lmd1: 1
 lmd2: 2
 range_norm: true
+dim: 3
 resnet: resnet34
 
 # dataset
+dataset: hela
 train_path: ''
 test_path: ''
 
@@ -17,7 +19,9 @@ smooth_iter: 3
 # set prepare work
 summary_dir: runs
 saver_dir: storages
-workers: 3
+shuffle: true
+num_workers: 3
+visual_freq: 5000
 diveces: 
   - 0
   - 1

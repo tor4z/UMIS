@@ -1,60 +1,83 @@
 import os
 import shutil
 import torch
-from collections import OrderedDict
 import glob
 
+from .config import Config
+
 class Saver(object):
+    CONFIG_FILE = 'cfg.pth'
+    BEST_FILE = 'best.pth'
+    LATEST_FILE = 'latest.pth'
+    CHECKPOINT_FILE = 'checkpoint_{}.pth'
 
     def __init__(self, opt):
-        self.date_str = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
-        self.args = args
-        self.directory = os.path.join('run', args.train_dataset, args.checkname)
-        self.runs = sorted(glob.glob(os.path.join(self.directory, 'experiment_*')))
-        run_id = int(self.runs[-1].split('_')[-1]) + 1 if self.runs else 0
-
-        if not os.path.exists(self.experiment_dir):
-            os.makedirs(self.experiment_dir)
-
-    @property
-    def experiment_dir(self):
-        dir = os.path.join(self.directory, 'experiment_{}'.format(self.date_str))
-        return dir
-
-    def save_checkpoint(self, state, is_best, filename='checkpoint.pth.tar'):
-        """Saves checkpoint to disk"""
-        filename = os.path.join(self.experiment_dir, filename)
-        torch.save(state, filename)
-        shutil.copyfile(filename, os.path.join(self.directory, 'model_last.pth.tar'))
-        if is_best:
-            best_pred = state['best_pred']
-            with open(os.path.join(self.experiment_dir, 'best_pred.txt'), 'w') as f:
-                f.write(str(best_pred))
-            if self.runs:
-                previous_miou = [0.0]
-                for run in self.runs:
-                    run_id = run.split('_')[-1]
-                    path = os.path.join(self.directory, 'experiment_{}'.format(str(run_id)), 'best_pred.txt')
-                    if os.path.exists(path):
-                        with open(path, 'r') as f:
-                            miou = float(f.readline())
-                            previous_miou.append(miou)
-                    else:
-                        continue
-                max_miou = max(previous_miou)
-                if best_pred > max_miou:
-                    shutil.copyfile(filename, os.path.join(self.directory, 'model_best.pth.tar'))
+        self.force = opt.force
+        self.dir = os.path.join(opt.saver_dir, opt.runtime_id)
+        if os.path.exists(self.dir):
+            if self.force:
+                shutil.rmtree(self.dir)
             else:
-                shutil.copyfile(filename, os.path.join(self.directory, 'model_best.pth.tar'))
+                raise RuntimeError('{} already exists.'.format(self.dir))
+        else:
+            try:
+                os.mkdir(self.dir)
+            except Exception as e:
+                raise RuntimeError(str(e))
+        
+        self.best_filename = os.path.join(self.dir, self.BEST_FILE)
+        self.latest_filename = os.path.join(self.dir, self.LATEST_FILE)
+        self.config_filename = os.path.join(self.dir, self.CONFIG_FILE)
 
-    def save_experiment_config(self):
-        logfile = os.path.join(self.experiment_dir, 'parameters.txt')
-        log_file = open(logfile, 'w')
-        p = OrderedDict()
-        p['train_dataset'] = self.args.train_dataset
-        p['lr'] = self.args.lr
-        p['epoch'] = self.args.epochs
+    def gen_checkpoint_filename(self, epoch):
+        path = os.path.join(self.dir, self.CHECKPOINT_FILE.format(epoch))
+        if os.path.exists(path):
+            if self.force:
+                os.remove(path)
+            else:
+                raise RuntimeError('{} already exists.'.format(path))
 
-        for key, val in p.items():
-            log_file.write(key + ':' + str(val) + '\n')
-        log_file.close()
+        return path 
+
+
+    def save_checkpoint(self, state, epoch):
+        pass
+
+    def load_checkpoint(self, epoch):
+        pass
+
+    def save_latest(self, path):
+        pass
+
+    def load_latest(self):
+        pass
+
+    def save_best(self, path):
+        pass
+
+    def load_best(self):
+        pass
+
+    def save_config(self, opt):
+        cfg = opt.dump()
+        self.save(cfg, self.config_filename)
+
+    def load_config(self, path=None):
+        if path is None:
+            path = self.config_filename
+        cfg = self.load(path)
+        opt = Config()
+        opt.load(cfg)
+        return opt
+
+    def check_dir(self, path):
+        if not os.path.exists(path):
+            raise RuntimeError('{} not exists.'.format(path))
+
+    def save(self, obj, path):
+        self.check_dir(path)
+        torch.save(obj, path)
+
+    def load(self, obj, path):
+        self.check_dir(path)
+        torch.load(obj, path)

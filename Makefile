@@ -1,5 +1,5 @@
 PYTHON := python
-DIR    := morphologicalpool
+DIR    := models/morphpool
 DEPS   := setup.py morphpool_cuda.cpp morphpool_cuda_kernel.cu
 
 .PHONY: install clean
