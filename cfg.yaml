@@ -11,8 +11,8 @@ thredhold: 0.9
 
 # dataset
 dataset: hela
-train_path: ''
-test_path: ''
+image_path: ''
+label_path: ''
 
 # morphological
 smooth_iter: 3
@@ -33,11 +33,18 @@ diveces:
   - 5
   - 6
   - 7
-resume: false
-runtime_id: null
+
+runtime_id: null # recommand to keep runtime_id to be null
 force: false
 
 # images settings
 image_x: 500
 image_y: 600
-image_z: 20     # if image is 2D, set image_z to 0
+image_z: 20      # if image is 2D, set image_z to 0
+suffix: tif
+
+# resume
+resume: false
+resume_latest: false
+resume_best: false
+resume_epoch: null      # a number from 0 to max_epoch

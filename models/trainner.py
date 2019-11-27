@@ -32,9 +32,6 @@ class Trainner(nn.Module):
             self.morph = nn.DataParallel(self.morph, device_ids=self.opt.devices)
             self.grad_fn = nn.DataParallel(self.grad_fn, device_ids=self.opt.devices)
 
-    def resume(self):
-        pass
-
     def train_iter(self, data):
         data = data.to(self.opt.device)
 
@@ -130,6 +127,11 @@ class Trainner(nn.Module):
 
         # self.validate()
 
+    def train(self):
+        self.resume()
+        for epoch in range(self.opt.epochs):
+            pass
+
     def validate_one(self, data, label):
         with torch.no_grad():
             self.model.eval()
@@ -170,3 +172,18 @@ class Trainner(nn.Module):
         
         self.model.module.load_state_dict(state['state_dict'])
         self.optimizer.load_state_dict(state['optimizer'])
+
+    def resume(self):
+        if self.opt.resume:
+            if self.opt.resume_best:
+                # resume best
+                self.load_checkpoint(best=True)
+            elif self.opt.resume_latest:
+                # resume latest
+                self.load_checkpoint(latest=True)
+            elif self.opt.resume_epoch is not None:
+                # resume epoch
+                self.load_checkpoint(epoch=self.opt.resume_epoch)
+            else:
+                raise ValueError('resume option error, please check cfg.yaml.')
+

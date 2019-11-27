@@ -7,7 +7,7 @@ from libtiff import TIFF
 from .transforms import Padding, CenterCrop
 
 
-class HelaDataset(Dataset):
+class DriveDataset(Dataset):
     def __init__(self, opt, datas):
         unziped = list(zip(*datas))
         self.images = list(unziped[0])
