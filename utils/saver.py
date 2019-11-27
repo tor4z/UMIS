@@ -13,7 +13,7 @@ class Saver(object):
 
     def __init__(self, opt):
         self.force = opt.force
-        self.dir = os.path.join(opt.saver_dir, opt.runtime_id)
+        self.dir = os.path.join(opt.saver_dir, opt.dataset, opt.runtime_id)
         if os.path.exists(self.dir):
             if self.force:
                 shutil.rmtree(self.dir)

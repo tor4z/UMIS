@@ -6,7 +6,7 @@ from torch.utils import tensorboard
 
 class Summary(object):
     def __init__(self, opt):
-        self.dir = os.path.join(opt.summary_dir, opt.runtime_id)
+        self.dir = os.path.join(opt.summary_dir, opt.dataset, opt.runtime_id)
         self.writer = tensorboard.SummaryWriter(log_dir=path)
         self.thredhold = opt.thredhold
         self.z = np.random.randint(0, image.shape[2])
@@ -15,11 +15,16 @@ class Summary(object):
     def add_image(self, tag, image, global_step):
         self.writer.add_imag(tag, image, global_steps)
 
-    def train_image(self, input, seg, rec, global_steps):
+    def train_image(self, input, seg, rec, label, global_steps):
         # display input image
         grid_image = make_grid(input[:self.disp_images, :, self.z, :, :].clone().cpu().data,
                                 self.disp_images, normalize=True)
         self.add_image('train/input', grid_image, global_step)
+
+        # display label image
+        grid_image = make_grid(label[:self.disp_images, :, self.z, :, :].data,
+                                self.disp_images, normalize=True)
+        self.add_image('train/label', grid_image, global_step)
 
         # display seg image
         grid_image = make_grid(seg[:self.disp_images, :, self.z, :, :].clone().cpu().data,
@@ -38,11 +43,16 @@ class Summary(object):
                                 self.disp_images, normalize=True)
         writer.add_image('train/rec', grid_image, global_step)
 
-    def val_image(self, input, seg, global_steps):
+    def val_image(self, input, seg, label, global_steps):
         # display input image
         grid_image = make_grid(input[:self.disp_images, :, self.z, :, :].clone().cpu().data,
                                 self.disp_images, normalize=True)
         self.add_image('val/input', grid_image, global_step)
+
+        # display label image
+        grid_image = make_grid(label[:self.disp_images, :, self.z, :, :].data,
+                                self.disp_images, normalize=True)
+        self.add_image('train/label', grid_image, global_step)
 
         # display seg image
         grid_image = make_grid(seg[:self.disp_images, :, self.z, :, :].clone().cpu().data,

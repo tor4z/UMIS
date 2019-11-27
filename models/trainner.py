@@ -32,84 +32,89 @@ class Trainner(nn.Module):
             self.morph = nn.DataParallel(self.morph, device_ids=self.opt.devices)
             self.grad_fn = nn.DataParallel(self.grad_fn, device_ids=self.opt.devices)
 
-    def train_iter(self, data):
-        data = data.to(self.opt.device)
+    def train_iter(self, dataloader):
+        self.model.train()
+        iterator = tqdm(dataloader,
+                        leave=True,
+                        dynamic_ncols=True)
+        for i, (data, label) in enumerate(iterator):
+            data = data.to(self.opt.device)
 
-        # Misc
-        dimsum = list(range(1, len(data.shape)))
+            # Misc
+            dimsum = list(range(1, len(data.shape)))
 
-        # Network
-        seg, rec = self.model(data)
-        grad_seg = self.grad_fn(seg)
-        grad_rec = self.grad_fn(rec)
+            # Network
+            seg, rec = self.model(data)
+            grad_seg = self.grad_fn(seg)
+            grad_rec = self.grad_fn(rec)
 
-        # References
-        area = seg.sum(dim=dimsum, keepdim=True)
-        area_m = (1 - seg).sum(dim=dimsum, keepdim=True)
-        c0 = (data * seg).sum(dim=dimsum, keepdim=True) / (area + 1e-8)
-        c1 = (data * (1 - seg)).sum(dim=dimsum, keepdim=True) / (area_m + 1e-8)
+            # References
+            area = seg.sum(dim=dimsum, keepdim=True)
+            area_m = (1 - seg).sum(dim=dimsum, keepdim=True)
+            c0 = (data * seg).sum(dim=dimsum, keepdim=True) / (area + 1e-8)
+            c1 = (data * (1 - seg)).sum(dim=dimsum, keepdim=True) / (area_m + 1e-8)
 
-        # Image force
-        image_force = (args.lmd1 * (data - c0).pow(2) - args.lmd2 * (data - c1).pow(2)) * grad_seg
+            # Image force
+            image_force = (args.lmd1 * (data - c0).pow(2) - args.lmd2 * (data - c1).pow(2)) * grad_seg
 
-        # Smooth
-        for i in range(self.opt.smooth_iter):
-            seg = self.morph(seg)
-            seg = self.morph(seg, True)
+            # Smooth
+            for i in range(self.opt.smooth_iter):
+                seg = self.morph(seg)
+                seg = self.morph(seg, True)
 
 
-        # Reconstruction loss
-        rec_loss = F.mse_loss(rec, data) + grad_rec.mean()
+            # Reconstruction loss
+            rec_loss = F.mse_loss(rec, data) + grad_rec.mean()
 
-        # Rank loss
-        rank_loss = torch.exp(c1 - c0).mean()
+            # Rank loss
+            rank_loss = torch.exp(c1 - c0).mean()
 
-        # Variance loss
-        seg_mean = area / (seg.shape[1] * seg.shape[2] * seg.shape[3] * seg.shape[4])
-        seg_size = seg.shape[1] * seg.shape[2] * seg.shape[3] * seg.shape[4]
-        var_loss = (seg.pow(2).sum(dim=dimsum) / seg_size) - (seg.sum(dim=dimsum) / seg_size).pow(2)
-        var_loss = torch.exp(var_loss).mean()
+            # Variance loss
+            seg_mean = area / (seg.shape[1] * seg.shape[2] * seg.shape[3] * seg.shape[4])
+            seg_size = seg.shape[1] * seg.shape[2] * seg.shape[3] * seg.shape[4]
+            var_loss = (seg.pow(2).sum(dim=dimsum) / seg_size) - (seg.sum(dim=dimsum) / seg_size).pow(2)
+            var_loss = torch.exp(var_loss).mean()
 
-        # Entropy loss
-        etropy_loss = (- seg * (seg + 1e-5).log()).mean()
+            # Entropy loss
+            etropy_loss = (- seg * (seg + 1e-5).log()).mean()
 
-        # Image force loss
-        one_opt = image_force[image_force < 0]
-        one_opt_seg = seg[image_force < 0]
-        zero_opt = image_force[image_force > 0]
-        zero_opt_seg = seg[image_force > 0]
-        image_foce_loss = 0
-        if len(one_opt) > 0:
-            image_foce_loss += torch.exp(one_opt * one_opt_seg).mean() * 0.5
-        if len(zero_opt) > 0:
-            image_foce_loss += torch.exp(- zero_opt * (1 - zero_opt_seg)).mean() * 0.5
+            # Image force loss
+            one_opt = image_force[image_force < 0]
+            one_opt_seg = seg[image_force < 0]
+            zero_opt = image_force[image_force > 0]
+            zero_opt_seg = seg[image_force > 0]
+            image_foce_loss = 0
+            if len(one_opt) > 0:
+                image_foce_loss += torch.exp(one_opt * one_opt_seg).mean() * 0.5
+            if len(zero_opt) > 0:
+                image_foce_loss += torch.exp(- zero_opt * (1 - zero_opt_seg)).mean() * 0.5
 
-        # Compound loss
-        loss = image_foce_loss
-        loss += 1e-2 * rank_loss
-        loss += 1e-3 * etropy_loss
-        loss += 1e-3 * var_loss
-        loss += 1e-6 * rec_loss
-        area_mean = area.mean()
-        loss += 5e-8 * area_mean
+            # Compound loss
+            loss = image_foce_loss
+            loss += 1e-2 * rank_loss
+            loss += 1e-3 * etropy_loss
+            loss += 1e-3 * var_loss
+            loss += 1e-6 * rec_loss
+            area_mean = area.mean()
+            loss += 5e-8 * area_mean
 
-        # Optimize
-        self.optimizer.zero_grad()
-        loss.backward()
-        self.optimizer.step()
+            # Optimize
+            self.optimizer.zero_grad()
+            loss.backward()
+            self.optimizer.step()
 
-        if self.global_steps % self.opt.visual_freq == 0:
-            loss_scalars = {
-                'loss': loss.item(),
-                'image_foce_loss': image_foce_loss.item(),
-                'rank_loss': rank_loss.item(),
-                'etropy_loss': etropy_loss.item(),
-                'var_loss': var_loss.item(),
-                'rec_loss': rec_loss.item(),
-                'area_mean': area_mean.item()}
+            if self.global_steps % self.opt.visual_freq == 0:
+                loss_scalars = {
+                    'loss': loss.item(),
+                    'image_foce_loss': image_foce_loss.item(),
+                    'rank_loss': rank_loss.item(),
+                    'etropy_loss': etropy_loss.item(),
+                    'var_loss': var_loss.item(),
+                    'rec_loss': rec_loss.item(),
+                    'area_mean': area_mean.item()}
 
-            self.summary.add_image(writer, data, seg, self.global_steps)
-            self.summary.add_scalars('main', scalars, self.global_steps)
+                self.summary.train_image(data, seg, rec, label, self.global_steps)
+                self.summary.add_scalars('main', scalars, self.global_steps)
 
     def train_epoch(self, dataloader, epoch):
         self.epoch = epoch
@@ -127,14 +132,16 @@ class Trainner(nn.Module):
 
         # self.validate()
 
-    def train(self):
+    def run(self, train_dataloader, val_dataloader):
         self.resume()
         for epoch in range(self.opt.epochs):
-            pass
+            self.train_epoch(train_dataloader, epoch)
+            self.validate_one()
 
-    def validate_one(self, data, label):
+    def validate_one(self, val_dataloader):
         with torch.no_grad():
             self.model.eval()
+            data, label = next(val_dataloader)
             data = data.to(self.opt.device)
             lables = lables.to(self.opt.device)
 
@@ -147,8 +154,8 @@ class Trainner(nn.Module):
                 seg = self.morph(seg, True)
 
         # Plot
-        input = torch.Tensor(input).unsqueeze(0).unsqueeze(0)
-        summary.visualize_image_val(writer, input, output, epoch)
+        data = torch.Tensor(data).unsqueeze(0).unsqueeze(0)
+        self.summary.train_image(data, seg, label, self.global_steps)
         
         self.save_checkpoint()
 

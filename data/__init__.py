@@ -11,7 +11,7 @@ datasets = {
 }
 
 
-class SingleValid(object):
+class SingleFoldValid(object):
     def __init__(self, opt):
         images_path = os.path.join(opt.image_path, '*.{}'format(opt.suffix))
         images = sorted(glob.glob(images_path))
