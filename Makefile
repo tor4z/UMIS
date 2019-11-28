@@ -9,9 +9,9 @@ install:
 	cd $(DIR);\
 	$(PYTHON) setup.py install
 
-clean:
+reset: clean
 	cd $(DIR);\
 	rm -rf *.egg* dist build
 
-reset: clean
+clean:
 	rm -rf $(RUNS) $(STORAGES)
