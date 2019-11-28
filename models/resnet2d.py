@@ -107,6 +107,7 @@ class ResNet(nn.Module):
                  layers,
                  input_planes=1,
                  shortcut_type='B'):
+        self.expansion = block.expansion
         self.inplanes = 64
         super(ResNet, self).__init__()
         self.conv1 = nn.Conv2d(

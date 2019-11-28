@@ -9,8 +9,9 @@ class SegNet2D(nn.Module):
     def __init__(self, opt):
         super(SegNet2D, self).__init__()
         self.feature = FeatureExtract(opt)
-        self.seg = SegNet2D_Seg()
-        self.rec = SegNet2D_Rec()
+        expansion = self.feature.expansion
+        self.seg = SegNet2D_Seg(expansion)
+        self.rec = SegNet2D_Rec(expansion)
 
     def forward(self, x):
         c1, c2, c3, c4 = self.feature(x)
@@ -23,8 +24,9 @@ class SegNet3D(nn.Module):
     def __init__(self, opt):
         super(SegNet3D, self).__init__()
         self.feature = FeatureExtract(opt)
-        self.seg = SegNet3D_Seg()
-        self.rec = SegNet3D_Rec()
+        expansion = self.feature.expansion
+        self.seg = SegNet3D_Seg(expansion)
+        self.rec = SegNet3D_Rec(expansion)
 
     def forward(self, x):
         c1, c2, c3, c4 = self.feature(x)

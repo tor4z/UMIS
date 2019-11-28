@@ -15,6 +15,7 @@ class FeatureExtract(nn.Module):
 
         self.base = resnet(opt)
         self.drop = nn.Dropout(0.2)
+        self.expansion = self.base.expansion
 
     def forward(self, x):
         c1, c2, c3, c4 = self.base(x)
@@ -23,10 +24,10 @@ class FeatureExtract(nn.Module):
 
 
 class SegNet3D_Seg(nn.Module):
-    def __init__(self):
+    def __init__(self, expansion):
         super(SegNet3D_Seg, self).__init__()
         self.deconv1 = nn.Sequential(
-            nn.ConvTranspose3d(512, 64, 4, 2, 1),
+            nn.ConvTranspose3d(512 * expansion, 64, 4, 2, 1),
             nn.BatchNorm3d(64),
             nn.ReLU(),
             nn.ConvTranspose3d(64, 64, (1, 3, 3), 1, padding=(0, 1, 1)),
@@ -34,7 +35,7 @@ class SegNet3D_Seg(nn.Module):
             nn.ReLU()
         )
         self.deconv2 = nn.Sequential(
-            nn.ConvTranspose3d(256 + 64, 32, 4, 2, 1),
+            nn.ConvTranspose3d(256 * expansion + 64, 32, 4, 2, 1),
             nn.BatchNorm3d(32),
             nn.ReLU(),
             nn.ConvTranspose3d(32, 32, (1, 3, 3), 1, padding=(0, 1, 1)),
@@ -42,7 +43,7 @@ class SegNet3D_Seg(nn.Module):
             nn.ReLU()
         )
         self.deconv3 = nn.Sequential(
-            nn.ConvTranspose3d(128 + 32, 8, 4, 2, 1),
+            nn.ConvTranspose3d(128 * expansion + 32, 8, 4, 2, 1),
             nn.BatchNorm3d(8),
             nn.ReLU(),
             nn.ConvTranspose3d(8, 8, (1, 3, 3), 1, padding=(0, 1, 1)),
@@ -69,10 +70,10 @@ class SegNet3D_Seg(nn.Module):
 
 
 class SegNet3D_Rec(nn.Module):
-    def __init__(self):
+    def __init__(self, expansion):
         super(SegNet3D_Rec, self).__init__()
         self.deconv1_rec = nn.Sequential(
-            nn.ConvTranspose3d(512, 64, 4, 2, 1),
+            nn.ConvTranspose3d(512 * expansion, 64, 4, 2, 1),
             nn.BatchNorm3d(64),
             nn.ReLU(),
             nn.ConvTranspose3d(64, 64, 1, 1),
@@ -80,7 +81,7 @@ class SegNet3D_Rec(nn.Module):
             nn.ReLU()
         )
         self.deconv2_rec = nn.Sequential(
-            nn.ConvTranspose3d(256 + 64, 32, 4, 2, 1),
+            nn.ConvTranspose3d(256 * expansion + 64, 32, 4, 2, 1),
             nn.BatchNorm3d(32),
             nn.ReLU(),
             nn.ConvTranspose3d(32, 32, 1, 1),
@@ -88,7 +89,7 @@ class SegNet3D_Rec(nn.Module):
             nn.ReLU()
         )
         self.deconv3_rec = nn.Sequential(
-            nn.ConvTranspose3d(128 + 32, 8, 4, 2, 1),
+            nn.ConvTranspose3d(128 * expansion + 32, 8, 4, 2, 1),
             nn.BatchNorm3d(8),
             nn.ReLU(),
             nn.ConvTranspose3d(8, 8, 1, 1),
@@ -110,10 +111,10 @@ class SegNet3D_Rec(nn.Module):
 
 
 class SegNet2D_Seg(nn.Module):
-    def __init__(self):
+    def __init__(self, expansion):
         super(SegNet2D_Seg, self).__init__()
         self.deconv1 = nn.Sequential(
-            nn.ConvTranspose2d(512, 64, 4, 2, 1),
+            nn.ConvTranspose2d(512 * expansion, 64, 4, 2, 1),
             nn.BatchNorm2d(64),
             nn.ReLU(),
             nn.ConvTranspose2d(64, 64, (3, 3), 1, padding=(1, 1)),
@@ -121,7 +122,7 @@ class SegNet2D_Seg(nn.Module):
             nn.ReLU()
         )
         self.deconv2 = nn.Sequential(
-            nn.ConvTranspose2d(256 + 64, 32, 4, 2, 1),
+            nn.ConvTranspose2d(256 * expansion + 64, 32, 4, 2, 1),
             nn.BatchNorm2d(32),
             nn.ReLU(),
             nn.ConvTranspose2d(32, 32, (3, 3), 1, padding=(1, 1)),
@@ -129,7 +130,7 @@ class SegNet2D_Seg(nn.Module):
             nn.ReLU()
         )
         self.deconv3 = nn.Sequential(
-            nn.ConvTranspose2d(128 + 32, 8, 4, 2, 1),
+            nn.ConvTranspose2d(128 * expansion + 32, 8, 4, 2, 1),
             nn.BatchNorm2d(8),
             nn.ReLU(),
             nn.ConvTranspose2d(8, 8, (3, 3), 1, padding=(1, 1)),
@@ -156,10 +157,10 @@ class SegNet2D_Seg(nn.Module):
 
 
 class SegNet2D_Rec(nn.Module):
-    def __init__(self):
+    def __init__(self, expansion):
         super(SegNet2D_Rec, self).__init__()
         self.deconv1_rec = nn.Sequential(
-            nn.ConvTranspose2d(512, 64, 4, 2, 1),
+            nn.ConvTranspose2d(512 * expansion, 64, 4, 2, 1),
             nn.BatchNorm2d(64),
             nn.ReLU(),
             nn.ConvTranspose2d(64, 64, 1, 1),
@@ -167,7 +168,7 @@ class SegNet2D_Rec(nn.Module):
             nn.ReLU()
         )
         self.deconv2_rec = nn.Sequential(
-            nn.ConvTranspose2d(256 + 64, 32, 4, 2, 1),
+            nn.ConvTranspose2d(256 * expansion + 64, 32, 4, 2, 1),
             nn.BatchNorm2d(32),
             nn.ReLU(),
             nn.ConvTranspose2d(32, 32, 1, 1),
@@ -175,7 +176,7 @@ class SegNet2D_Rec(nn.Module):
             nn.ReLU()
         )
         self.deconv3_rec = nn.Sequential(
-            nn.ConvTranspose2d(128 + 32, 8, 4, 2, 1),
+            nn.ConvTranspose2d(128 * expansion + 32, 8, 4, 2, 1),
             nn.BatchNorm2d(8),
             nn.ReLU(),
             nn.ConvTranspose2d(8, 8, 1, 1),
