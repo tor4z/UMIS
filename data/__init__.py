@@ -1,19 +1,22 @@
 import os
 import copy
 import numpy as np
+import glob
+
 from .hela import HelaDataset
-from .vesselNN import vesselNN
+from .vesselNN import VesselNN
+from .drive import DriveDataset
 
 datasets = {
     'hela': HelaDataset,
-    'vesslNN': vesslNN,
+    'vesselNN': VesselNN,
     'drive': DriveDataset
 }
 
 
 class SingleFoldValid(object):
     def __init__(self, opt):
-        images_path = os.path.join(opt.image_path, '*.{}'format(opt.suffix))
+        images_path = os.path.join(opt.image_path, '*.{}'.format(opt.suffix))
         self.images = sorted(glob.glob(images_path))
 
         # if opt.labels_path:
@@ -30,6 +33,9 @@ class SingleFoldValid(object):
         self.val_index = 0
 
         self.dataset_cls = datasets[opt.dataset]
+        self.opt = opt
+        print('initialize Single fold validate')
+        print('loaded {} image'.format(self.image_len))
 
     def supervised(self):
         pass
@@ -51,8 +57,8 @@ class SingleFoldValid(object):
             val_datas = datas.pop(self.val_index)
             train_datas = datas
 
-            train_dataset = self.dataset_cls(opt, train_datas)
-            val_dataset = self.dataset_cls(opt, val_datas)
+            train_dataset = self.dataset_cls(self.opt, train_datas)
+            val_dataset = self.dataset_cls(self.opt, val_datas)
 
             yield train_dataset, val_dataset
             self.val_index += 1

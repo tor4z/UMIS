@@ -56,7 +56,7 @@ class MorphPool2D(nn.Module):
             np.flipud(np.eye(3)),
             np.rot90([[0, 1, 0]] * 3)]
 
-        self.register_buffer('morph', torch.Tensor(_P3))
+        self.register_buffer('morph', torch.Tensor(_P2))
 
     def forward(self, input, erode=False):
         if not erode:

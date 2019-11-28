@@ -1,15 +1,17 @@
-PYTHON := python
-DIR    := models/morphpool
-DEPS   := setup.py morphpool_cuda.cpp morphpool_cuda_kernel.cu
+PYTHON   := python
+DIR      := models/morphpool
+RUNS     := runs
+STORAGES := storages
 
-.PHONY: install clean
+.PHONY: install clean reset
 
-install: $(DEPS)
-	cd $(DIR)
+install:
+	cd $(DIR);\
 	$(PYTHON) setup.py install
-	cd -
 
 clean:
-	cd $(DIR)
-	rm -rf *.egg
-	cd -
+	cd $(DIR);\
+	rm -rf *.egg* dist build
+
+reset: clean
+	rm -rf $(RUNS) $(STORAGES)

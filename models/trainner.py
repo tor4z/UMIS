@@ -1,7 +1,9 @@
 import torch
+from tqdm import tqdm
 from torch import nn
+from torch.nn import functional as F
 
-from .segnet import SegNet2D
+from .segnet import SegNet2D, SegNet3D
 from .grad import Grad2D, Grad3D
 from .morphpool.morphpoollayer import MorphPool2D,\
                                       MorphPool3D
@@ -9,19 +11,21 @@ from .morphpool.morphpoollayer import MorphPool2D,\
 
 class Trainner(nn.Module):
     def __init__(self, opt, summary, saver):
+        super(Trainner, self).__init__()
         self.opt = opt
         self.summary = summary
         self.saver = saver
+        print('initialize trianner')
 
     def setup_model(self):
         if self.opt.dim == 2:
-            self.model = SegNet2D().to(self.opt.device)
-            self.morph = MorphPool2D().to(self.opt.device)
-            self.grad_fn = Grad2D().to(self.opt.device)
+            self.model = SegNet2D(self.opt).cuda(self.opt.device)
+            self.morph = MorphPool2D().cuda(self.opt.device)
+            self.grad_fn = Grad2D().cuda(self.opt.device)
         elif self.opt.dim == 3:
-            self.model = SegNet3D().to(self.opt.device)
-            self.morph = MorphPool3D().to(self.opt.device)
-            self.grad_fn = Grad3D().to(self.opt.device)
+            self.model = SegNet3D(self.opt).cuda(self.opt.device)
+            self.morph = MorphPool3D().cuda(self.opt.device)
+            self.grad_fn = Grad3D().cuda(self.opt.device)
         else:
             raise ValueError('dim:{}'.format(opt.dim))
 
@@ -32,13 +36,9 @@ class Trainner(nn.Module):
             self.morph = nn.DataParallel(self.morph, device_ids=self.opt.devices)
             self.grad_fn = nn.DataParallel(self.grad_fn, device_ids=self.opt.devices)
 
-    def train_iter(self, dataloader):
-        self.model.train()
-        iterator = tqdm(dataloader,
-                        leave=True,
-                        dynamic_ncols=True)
-        for i, (data, label) in enumerate(iterator):
+    def train_iter(self, data, label):
             data = data.to(self.opt.device)
+            if label: label = label.to(self.opt.device)
 
             # Misc
             dimsum = list(range(1, len(data.shape)))
@@ -55,13 +55,12 @@ class Trainner(nn.Module):
             c1 = (data * (1 - seg)).sum(dim=dimsum, keepdim=True) / (area_m + 1e-8)
 
             # Image force
-            image_force = (args.lmd1 * (data - c0).pow(2) - args.lmd2 * (data - c1).pow(2)) * grad_seg
+            image_force = (self.opt.lmd1 * (data - c0).pow(2) - self.opt.lmd2 * (data - c1).pow(2)) * grad_seg
 
             # Smooth
             for i in range(self.opt.smooth_iter):
                 seg = self.morph(seg)
                 seg = self.morph(seg, True)
-
 
             # Reconstruction loss
             rec_loss = F.mse_loss(rec, data) + grad_rec.mean()
@@ -70,8 +69,13 @@ class Trainner(nn.Module):
             rank_loss = torch.exp(c1 - c0).mean()
 
             # Variance loss
-            seg_mean = area / (seg.shape[1] * seg.shape[2] * seg.shape[3] * seg.shape[4])
-            seg_size = seg.shape[1] * seg.shape[2] * seg.shape[3] * seg.shape[4]
+            if self.opt.dim == 3:
+                # seg_mean = area / (seg.shape[1] * seg.shape[2] * seg.shape[3] * seg.shape[4])
+                seg_size = seg.shape[1] * seg.shape[2] * seg.shape[3] * seg.shape[4]
+            else:
+                # seg_mean = area / (seg.shape[1] * seg.shape[2] * seg.shape[3])
+                seg_size = seg.shape[1] * seg.shape[2] * seg.shape[3]
+
             var_loss = (seg.pow(2).sum(dim=dimsum) / seg_size) - (seg.sum(dim=dimsum) / seg_size).pow(2)
             var_loss = torch.exp(var_loss).mean()
 
@@ -114,7 +118,7 @@ class Trainner(nn.Module):
                     'area_mean': area_mean.item()}
 
                 self.summary.train_image(data, seg, rec, label, self.global_steps)
-                self.summary.add_scalars('main', scalars, self.global_steps)
+                self.summary.add_scalars('main_loss', loss_scalars, self.global_steps)
 
     def train_epoch(self, dataloader, epoch):
         self.epoch = epoch
@@ -123,41 +127,48 @@ class Trainner(nn.Module):
                         leave=True,
                         dynamic_ncols=True)
 
-        for i, (data, _) in enumerate(iterator):
+        for i, data in enumerate(iterator):
+            if isinstance(data, tuple):
+                data, label = data
+            else:
+                label = None
+
             self.global_steps = epoch * len(dataloader) + i
-            self.train_iter(data)
+            self.train_iter(data, label)
+
             iterator.set_description(
                 'Epoch [{epoch}/{epochs}]'.format(
                     epoch=epoch, epochs=self.opt.epochs))
-
-        # self.validate()
 
     def run(self, train_dataloader, val_dataloader):
         self.resume()
         for epoch in range(self.opt.epochs):
             self.train_epoch(train_dataloader, epoch)
-            self.validate_one()
+            self.validate_one(val_dataloader)
 
     def validate_one(self, val_dataloader):
         with torch.no_grad():
             self.model.eval()
-            data, label = next(val_dataloader)
-            data = data.to(self.opt.device)
-            lables = lables.to(self.opt.device)
 
-            # Network
-            seg, rec = self.model(data)
+            for data in val_dataloader:
+                if isinstance(data, tuple):
+                    data, label = data
+                    lable = lable.to(self.opt.device)
+                else:
+                    label = None
+                data = data.to(self.opt.device)                    
 
-            # Smooth
-            for i in range(self.opt.smooth_iter):
-                seg = self.morph(seg)
-                seg = self.morph(seg, True)
+                # Network
+                seg, rec = self.model(data)
 
-        # Plot
-        data = torch.Tensor(data).unsqueeze(0).unsqueeze(0)
-        self.summary.train_image(data, seg, label, self.global_steps)
+                # Smooth
+                for i in range(self.opt.smooth_iter):
+                    seg = self.morph(seg)
+                    seg = self.morph(seg, True)
+
+                self.summary.val_image(data, seg, label, self.global_steps)
         
-        self.save_checkpoint()
+        self.save_checkpoint(0)
 
     def save_checkpoint(self, pred):
         self.saver.save_checkpoint({

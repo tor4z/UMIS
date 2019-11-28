@@ -9,6 +9,8 @@ from .transforms import Padding, CenterCrop
 
 class HelaDataset(Dataset):
     def __init__(self, opt, images):
+        if not isinstance(images, list):
+            images = [images]
         self.images = images
         # self.labels = list(unziped[1])
 
@@ -41,10 +43,11 @@ class HelaDataset(Dataset):
         return self.crop(image)
 
     def __getitem__(self, index):
-        image = self.images(index)
+        image = self.images[index]
+        image = self.imread(image)
         # label = self.labels(index)
 
         image = self.naive_resize(image)
         # label = self.naive_resize(label)
 
-        return image, None
+        return image

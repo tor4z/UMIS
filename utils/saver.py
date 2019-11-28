@@ -21,7 +21,7 @@ class Saver(object):
                 raise RuntimeError('{} already exists.'.format(self.dir))
         else:
             try:
-                os.mkdir(self.dir)
+                os.makedirs(self.dir)
             except Exception as e:
                 raise RuntimeError(str(e))
         
@@ -30,6 +30,7 @@ class Saver(object):
         self.config_filename = os.path.join(self.dir, self.CONFIG_FILE)
 
         self.best_pred = 1000000
+        print('initialize saver')
 
     def gen_checkpoint_filename(self, epoch):
         if epoch < 0:
@@ -44,6 +45,7 @@ class Saver(object):
 
     def save_checkpoint(self, state):
         epoch = state['epoch']
+        pred = state['pred']
         path = self.gen_checkpoint_filename(epoch)
         self.save(state, path)
         self.save_latest(path)
@@ -90,7 +92,6 @@ class Saver(object):
             raise RuntimeError('{} not exists.'.format(path))
 
     def save(self, obj, path):
-        self.check_dir(path)
         torch.save(obj, path)
 
     def load(self, obj, path):

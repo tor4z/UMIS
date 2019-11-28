@@ -37,4 +37,4 @@ def imread(filename):
     elif suffix == 'png':
         return read_png(filename)
     else:
-        raise NotImplementedError('Not support read {} file'.format(suffix))
+        raise NotImplementedError('Not support read {}'.format(filename))

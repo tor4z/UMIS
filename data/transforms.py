@@ -26,8 +26,8 @@ class CenterCrop(object):
         self.y = opt.image_y
         self.z = opt.image_z
 
-    def crop_2d(self):
-        y, x = image.shape
+    def crop_2d(self, image):
+        _, y, x = image.size()
         if x > self.x or y > self.y:
             raise ValueError('({},{},{}) crop to ({},{},{})'.format(\
                                 x, y, self.x, self.y))
@@ -38,7 +38,7 @@ class CenterCrop(object):
         return image[pad_y: pad_y + self.y,
                      pad_x: pad_x + self.x,]
 
-    def crop_3d(self):
+    def crop_3d(self, image):
         z, y, x = image.shape
         if x > self.x or y > self.y or z > self.z:
             raise ValueError('({},{},{}) crop to ({},{},{})'.format(\
@@ -53,7 +53,7 @@ class CenterCrop(object):
                      pad_x: pad_x + self.x,]
 
     def __call__(self, image):
-        if z == 0:
+        if self.z == 1:
             return self.crop_2d(image)
         else:
             return self.crop_3d(image)

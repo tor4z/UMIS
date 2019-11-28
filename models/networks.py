@@ -1,16 +1,22 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from .resnet import resnet
+from .resnet3d import resnet as resnet3d
+from .resnet2d import resnet as resnet2d
 
 
 class FeatureExtract(nn.Module):
     def __init__(self, opt):
         super(FeatureExtract, self).__init__()
+        if opt.dim == 2:
+            resnet = resnet2d
+        else:
+            resnet = resnet3d
+
         self.base = resnet(opt)
         self.drop = nn.Dropout(0.2)
 
-    def forward(self):
+    def forward(self, x):
         c1, c2, c3, c4 = self.base(x)
         c4 = self.drop(c4)
         return c1, c2, c3, c4
@@ -48,7 +54,7 @@ class SegNet3D_Seg(nn.Module):
             nn.Sigmoid()
         )
 
-    def forward(self, c1, c2, c3, c4):
+    def forward(self, c1, c2, c3, c4, x):
         dc1 = self.deconv1(c4)
         cat = torch.cat((c3, dc1), 1)
         cat = F.interpolate(cat, size=(x.shape[2] // 8, x.shape[3] // 8, x.shape[4] // 8),
@@ -94,7 +100,7 @@ class SegNet3D_Rec(nn.Module):
             nn.Sigmoid()
         )
 
-    def forward(self, c1, c2, c3, c4):
+    def forward(self, c1, c2, c3, c4, x):
         dcr1 = self.deconv1_rec(c4)
         dcr2 = self.deconv2_rec(torch.cat((c3, dcr1), 1))
         rec = self.deconv3_rec(torch.cat((c2, dcr2), 1))
@@ -110,7 +116,7 @@ class SegNet2D_Seg(nn.Module):
             nn.ConvTranspose2d(512, 64, 4, 2, 1),
             nn.BatchNorm2d(64),
             nn.ReLU(),
-            nn.ConvTranspose2d(64, 64, (1, 3, 3), 1, padding=(0, 1, 1)),
+            nn.ConvTranspose2d(64, 64, (3, 3), 1, padding=(1, 1)),
             nn.BatchNorm2d(64),
             nn.ReLU()
         )
@@ -118,7 +124,7 @@ class SegNet2D_Seg(nn.Module):
             nn.ConvTranspose2d(256 + 64, 32, 4, 2, 1),
             nn.BatchNorm2d(32),
             nn.ReLU(),
-            nn.ConvTranspose2d(32, 32, (1, 3, 3), 1, padding=(0, 1, 1)),
+            nn.ConvTranspose2d(32, 32, (3, 3), 1, padding=(1, 1)),
             nn.BatchNorm2d(32),
             nn.ReLU()
         )
@@ -126,7 +132,7 @@ class SegNet2D_Seg(nn.Module):
             nn.ConvTranspose2d(128 + 32, 8, 4, 2, 1),
             nn.BatchNorm2d(8),
             nn.ReLU(),
-            nn.ConvTranspose2d(8, 8, (1, 3, 3), 1, padding=(0, 1, 1)),
+            nn.ConvTranspose2d(8, 8, (3, 3), 1, padding=(1, 1)),
             nn.BatchNorm2d(8),
             nn.ReLU()
         )
@@ -135,16 +141,16 @@ class SegNet2D_Seg(nn.Module):
             nn.Sigmoid()
         )
 
-    def forward(self, c1, c2, c3, c4):
+    def forward(self, c1, c2, c3, c4, x):
         dc1 = self.deconv1(c4)
         cat = torch.cat((c3, dc1), 1)
-        cat = F.interpolate(cat, size=(x.shape[2] // 8, x.shape[3] // 8, x.shape[4] // 8),
-                            mode='trilinear', align_corners=False)
+        cat = F.interpolate(cat, size=(x.shape[2] // 8, x.shape[3] // 8),
+                            mode='bilinear', align_corners=False)
         dc2 = self.deconv2(cat)
-        _c2 = F.interpolate(c2, size=dc2.shape[2:], mode='trilinear', align_corners=False)
+        _c2 = F.interpolate(c2, size=dc2.shape[2:], mode='bilinear', align_corners=False)
         cat = torch.cat((_c2, dc2), 1)
         out = self.deconv3(cat)
-        out = F.interpolate(out, size=x.shape[2:], mode='trilinear', align_corners=False)
+        out = F.interpolate(out, size=x.shape[2:], mode='bilinear', align_corners=False)
         out = self.out_conv(out)
         return out
 
@@ -181,10 +187,10 @@ class SegNet2D_Rec(nn.Module):
             nn.Sigmoid()
         )
 
-    def forward(self, c1, c2, c3, c4):
+    def forward(self, c1, c2, c3, c4, x):
         dcr1 = self.deconv1_rec(c4)
         dcr2 = self.deconv2_rec(torch.cat((c3, dcr1), 1))
         rec = self.deconv3_rec(torch.cat((c2, dcr2), 1))
-        rec = F.interpolate(rec, size=x.shape[2:], mode='trilinear', align_corners=False)
-        rec = self.out_conv(rec)
+        rec = F.interpolate(rec, size=x.shape[2:], mode='bilinear', align_corners=False)
+        rec = self.rec_conv(rec)
         return rec

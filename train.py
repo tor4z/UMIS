@@ -15,16 +15,19 @@ def main(opt):
     saver = Saver(opt)
     summary = Summary(opt)
     sfv =  SingleFoldValid(opt)
-    trainner = Trainner(opt)
-    for train_set, val_set in sfv.gen_dataset():
+    trainner = Trainner(opt, summary, saver)
+    trainner.setup_model()
+    for fold, (train_set, val_set) in enumerate(sfv.gen_dataset()):
+        print('Training fold {}'.format(fold))
+        
         train_dataloader = DataLoader(train_set, 
                             batch_size=opt.batch_size,
                             shuffle=opt.shuffle,
                             num_workers=opt.num_workers)
         val_dataloader = DataLoader(val_set)
-    trainner.run(train_dataloader, val_dataloader)
+        trainner.run(train_dataloader, val_dataloader)
 
 
-if if __name__ == "__main__":
+if __name__ == "__main__":
     opt = Config(CFG_FILE)
     main(opt)

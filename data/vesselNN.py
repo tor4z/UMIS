@@ -1,10 +1,11 @@
 import torch
 from torch.utils.data import Dataset
 import glob
-import tifffile as T
-from libtiff import TIFF
 import cv2
 import numpy as np
+
+
+from .utils import imread
 
 
 def range_normalize(v):
@@ -80,23 +81,6 @@ def smart_padding(img, data_shape, lables_shape, stride):
                                     data_shape[2] - lables_shape[2]) % 2)),
                      mode='reflect')
 
-    return img
-
-
-def imread(path):
-    suffix = path.split('.')[-1]
-    if suffix == 'tif':
-        try:
-            img = T.imread(path)
-        except:
-            img = []
-            tif = TIFF.open(path)
-            for _image in tif.iter_images():
-                img.append(_image)
-            img = np.stack(img, 0)
-    else:
-        img = cv2.imread(path)
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     return img
 
 
@@ -192,7 +176,7 @@ class Single_Image_Eval(Dataset):
         return data, lables
 
 
-class Directory_Image_Train(Dataset):
+class VesselNN(Dataset):
     def __init__(self,
                  images_path,
                  labels_path,

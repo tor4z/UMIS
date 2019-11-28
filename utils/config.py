@@ -16,9 +16,9 @@ class Config(object):
             self.__setattr__(k, v)
 
     def post_config(self):
-        if self.cfg.['devices']:
+        if self.cfg['devices']:
             self.cfg['cuda'] = True
-            self.cfg['device'] = torch.device('cuda:{}'.format(self.devices[0]))
+            self.cfg['device'] = torch.device('cuda:{}'.format(self.cfg['devices'][0]))
         else:
             self.cfg['cuda'] = False
             self.cfg['device'] = torch.device('cpu')
