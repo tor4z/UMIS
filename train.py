@@ -1,3 +1,4 @@
+import argparse
 from torch.utils.data import DataLoader
 
 from utils.config import Config
@@ -8,15 +9,13 @@ from data import SingleFoldValid
 
 from models.segnet import SegNet2D
 
-CFG_FILE = 'cfg.yaml'
-
 
 def main(opt):
     saver = Saver(opt)
     summary = Summary(opt)
     sfv =  SingleFoldValid(opt)
     trainner = Trainner(opt, summary, saver)
-    trainner.setup_model()
+    trainner.setup_models()
     for fold, (train_set, val_set) in enumerate(sfv.gen_dataset()):
         print('==== Training fold {} ===='.format(fold + 1))
 
@@ -29,5 +28,9 @@ def main(opt):
 
 
 if __name__ == "__main__":
-    opt = Config(CFG_FILE)
+    parser = argparse.ArgumentParser('UMIS')
+    parser.add_argument('--cfg', type=str, help='config file', default='cfg.yaml')
+    args = parser.parse_args()
+
+    opt = Config(args.cfg)
     main(opt)

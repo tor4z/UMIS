@@ -17,7 +17,7 @@ class Trainner(nn.Module):
         self.saver = saver
         print('initialize trianner')
 
-    def setup_model(self):
+    def setup_models(self):
         if self.opt.dim == 2:
             self.model = SegNet2D(self.opt).cuda(self.opt.device)
             self.morph = MorphPool2D().cuda(self.opt.device)
