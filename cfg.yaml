@@ -38,9 +38,9 @@ runtime_id: null # recommand to keep runtime_id to be null
 force: false
 
 # images settings
-image_x: 500
-image_y: 600
-image_z: 20      # if image is 2D, set image_z to 0
+image_x: 512
+image_y: 512
+image_z: 0      # if image is 2D, set image_z to 0
 suffix: tif
 
 # resume

@@ -2,16 +2,15 @@ import os
 import glob
 import torch
 from torch.utils.data import Dataset
-from libtiff import TIFF
 
+from .utils import imread
 from .transforms import Padding, CenterCrop
 
 
 class HelaDataset(Dataset):
-    def __init__(self, opt, datas):
-        unziped = list(zip(*datas))
-        self.images = list(unziped[0])
-        self.labels = list(unziped[1])
+    def __init__(self, opt, images):
+        self.images = images
+        # self.labels = list(unziped[1])
 
         self.len = len(self.images)
 
@@ -25,15 +24,12 @@ class HelaDataset(Dataset):
         return self.len
 
     def imread(self, path, tensor=True):
-        images = []
-        tif = TIFF.open(path)
-        for img in tif.iter_images():
-            images.append(img)
+        image = imread(path)
 
         if tensor:
-            return torch.Tensor(images)
+            return torch.Tensor(image)
         else:
-            return images
+            return image
 
     def naive_resize(self, image):
         z, y, x = image.shape
@@ -46,9 +42,9 @@ class HelaDataset(Dataset):
 
     def __getitem__(self, index):
         image = self.images(index)
-        label = self.labels(index)
+        # label = self.labels(index)
 
         image = self.naive_resize(image)
-        label = self.naive_resize(label)
+        # label = self.naive_resize(label)
 
-        return image, label
+        return image, None
