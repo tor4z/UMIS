@@ -25,6 +25,8 @@ class Config(object):
 
         if self.cfg['resume'] and not self.cfg['runtime_id']:
             raise RuntimeError('when resume is enabled, runtime_id should be specified.')
+        if self.cfg['disp_images'] > self.cfg['batch_size']:
+            raise ValueError('disp_images should be less than batch_size.')
 
         if not self.cfg['runtime_id']:
             dtate_str = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
