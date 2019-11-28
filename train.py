@@ -18,8 +18,8 @@ def main(opt):
     trainner = Trainner(opt, summary, saver)
     trainner.setup_model()
     for fold, (train_set, val_set) in enumerate(sfv.gen_dataset()):
-        print('Training fold {}'.format(fold))
-        
+        print('==== Training fold {} ===='.format(fold + 1))
+
         train_dataloader = DataLoader(train_set, 
                             batch_size=opt.batch_size,
                             shuffle=opt.shuffle,
