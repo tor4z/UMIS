@@ -109,13 +109,13 @@ class Trainner(nn.Module):
 
             if self.global_steps % self.opt.visual_freq == 0:
                 loss_scalars = {
-                    'loss': loss.item(),
-                    'image_foce_loss': image_foce_loss.item(),
-                    'rank_loss': rank_loss.item(),
-                    'etropy_loss': etropy_loss.item(),
-                    'var_loss': var_loss.item(),
-                    'rec_loss': rec_loss.item(),
-                    'area_mean': area_mean.item()}
+                    'loss':             loss.item(),
+                    'image_foce_loss':  (self.opt.morph_ratio * image_foce_loss).item(),
+                    'rank_loss':        (self.opt.rank_ratio * rank_loss).item(),
+                    'etropy_loss':      (self.opt.entropy_ratio * etropy_loss).item(),
+                    'var_loss':         (self.opt.var_ratio * var_loss).item(),
+                    'rec_loss':         (self.opt.rec_ratio * rec_loss).item(),
+                    'area_mean':        (self.opt.area_ratio * area_mean).item()}
 
                 self.summary.train_image(data, seg, rec, label, self.global_steps)
                 self.summary.add_scalars('main_loss', loss_scalars, self.global_steps)
