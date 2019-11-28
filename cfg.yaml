@@ -9,6 +9,14 @@ dim: 2
 resnet: resnet34
 thredhold: 0.9
 
+# loss control
+rank_ratio: 1.e-2
+entropy_ratio: 1.e-3
+var_ratio: 1.e-3
+rec_ratio: 1.e-6
+area_ratio: 5.e-8
+morph_ratio: 1
+
 # dataset
 dataset: hela
 image_path: /data/cwj/HeLa/img

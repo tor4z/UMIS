@@ -94,13 +94,13 @@ class Trainner(nn.Module):
                 image_foce_loss += torch.exp(- zero_opt * (1 - zero_opt_seg)).mean() * 0.5
 
             # Compound loss
-            loss = image_foce_loss
-            loss += 1e-2 * rank_loss
-            loss += 1e-3 * etropy_loss
-            loss += 1e-3 * var_loss
-            loss += 1e-6 * rec_loss
+            loss = self.opt.morph_ratio * image_foce_loss
+            loss += self.opt.rank_ratio * rank_loss
+            loss += self.opt.entropy_ratio * etropy_loss
+            loss += self.opt.var_ratio * var_loss
+            loss += self.opt.rec_ratio * rec_loss
             area_mean = area.mean()
-            loss += 5e-8 * area_mean
+            loss += self.opt.area_ratio * area_mean
 
             # Optimize
             self.optimizer.zero_grad()
