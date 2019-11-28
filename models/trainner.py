@@ -118,7 +118,7 @@ class Trainner(nn.Module):
 
                 self.summary.train_image(data, seg, rec, label, self.global_steps)
                 self.summary.add_scalars('losses', losses, self.global_steps)
-                self.summary.add_scalar('total', loss.item(), self.global_steps)
+                self.summary.add_scalar('total_loss', loss.item(), self.global_steps)
 
     def train_epoch(self, dataloader, epoch):
         self.epoch = epoch

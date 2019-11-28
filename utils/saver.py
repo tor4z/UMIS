@@ -30,6 +30,8 @@ class Saver(object):
         self.config_filename = os.path.join(self.dir, self.CONFIG_FILE)
 
         self.best_pred = 1000000
+
+        self.save_config(opt)
         print('initialize saver')
 
     def gen_checkpoint_filename(self, epoch):
