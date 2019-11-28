@@ -108,8 +108,7 @@ class Trainner(nn.Module):
             self.optimizer.step()
 
             if self.global_steps % self.opt.visual_freq == 0:
-                loss_scalars = {
-                    'loss':             loss.item(),
+                losses = {
                     'image_foce_loss':  (self.opt.morph_ratio * image_foce_loss).item(),
                     'rank_loss':        (self.opt.rank_ratio * rank_loss).item(),
                     'etropy_loss':      (self.opt.entropy_ratio * etropy_loss).item(),
@@ -118,7 +117,8 @@ class Trainner(nn.Module):
                     'area_mean':        (self.opt.area_ratio * area_mean).item()}
 
                 self.summary.train_image(data, seg, rec, label, self.global_steps)
-                self.summary.add_scalars('main_loss', loss_scalars, self.global_steps)
+                self.summary.add_scalars('losses', losses, self.global_steps)
+                self.summary.add_scalar('total', loss.item(), self.global_steps)
 
     def train_epoch(self, dataloader, epoch):
         self.epoch = epoch
@@ -203,5 +203,5 @@ class Trainner(nn.Module):
                 # resume epoch
                 self.load_checkpoint(epoch=self.opt.resume_epoch)
             else:
-                raise ValueError('resume option error, please check cfg.yaml.')
+                raise ValueError('resume option error, please configure file.')
 

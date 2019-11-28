@@ -92,5 +92,9 @@ class Summary(object):
         self.writer.add_scalars(tag, scalars, global_steps)
         self.flush()
 
+    def add_scalar(self, tag, value, global_steps):
+        self.writer.add_scalar(tag, value, global_steps)
+        self.flush()
+
     def flush(self):
         self.writer.flush()
