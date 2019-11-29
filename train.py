@@ -25,6 +25,8 @@ def main(opt):
                             num_workers=opt.num_workers)
         val_dataloader = DataLoader(val_set)
         trainner.run(train_dataloader, val_dataloader)
+        break
+    print('Finished.')
 
 
 if __name__ == "__main__":

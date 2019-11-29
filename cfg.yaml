@@ -1,37 +1,48 @@
-# hyper parameter
+# == hyper parameter ==
 epochs: 1000
 batch_size: 16
 lr: 1.E-4
-lmd1: 1
-lmd2: 2
+lmd1: 1       # fg
+lmd2: 2       # bg
 range_norm: true
 dim: 2
-resnet: resnet34
+# resnet10 resnet18 resnet34 resnet50 resnet101
+# resnet152 resnet200
+resnet: resnet101
 thredhold: 0.9
 
-# loss control
+# == loss control ==
+
+# >>>best<<<
+# rank_ratio: 1.e-2
+# entropy_ratio: 1.e-3
+# var_ratio: 1.e-3
+# rec_ratio: 1.e-6
+# area_ratio: 5.e-8
+# morph_ratio: 1
+
 rank_ratio: 1.e-2
-entropy_ratio: 1.e-3
+entropy_ratio: 1.e-2
 var_ratio: 1.e-3
 rec_ratio: 1.e-6
 area_ratio: 5.e-8
-morph_ratio: 1
+morph_ratio: 0.1
 
-# dataset
+# == dataset ==
 dataset: hela
 image_path: /data/cwj/HeLa/img
 label_path: null
 
-# morphological
-smooth_iter: 3
+# == morphological ==
+smooth_iter: 4
 
-# set prepare work
+# == set prepare work ==
 summary_dir: runs
 saver_dir: storages
 disp_images: 5
 shuffle: true
 num_workers: 3
-visual_freq: 100
+visual_freq: 50
 devices: 
   # - 0
   # - 1
@@ -42,16 +53,17 @@ devices:
   - 6
   - 7
 
+# == task settings ==
 runtime_id: null # recommand to keep runtime_id to be null
 force: false
 
-# images settings
+# == images settings ==
 image_x: 512
 image_y: 512
 image_z: 1      # if image is 2D, set image_z to 1
 suffix: tif
 
-# resume
+# == resume ==
 resume: false
 resume_latest: false
 resume_best: false
