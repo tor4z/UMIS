@@ -114,27 +114,28 @@ class SegNet2D_Seg(nn.Module):
     def __init__(self, expansion):
         super(SegNet2D_Seg, self).__init__()
         self.deconv1 = nn.Sequential(
-            nn.ConvTranspose2d(512 * expansion, 64, 4, 2, 1),
-            nn.BatchNorm2d(64),
+            nn.ConvTranspose2d(512 * expansion, 128, 4, 2, 1),
+            nn.BatchNorm2d(128),
             nn.ReLU(),
-            nn.ConvTranspose2d(64, 64, (3, 3), 1, padding=(1, 1)),
-            nn.BatchNorm2d(64),
+            nn.ConvTranspose2d(128, 128, (3, 3), 1, padding=(1, 1)),
+            nn.BatchNorm2d(128),
             nn.ReLU()
         )
         self.deconv2 = nn.Sequential(
-            nn.ConvTranspose2d(256 * expansion + 64, 32, 4, 2, 1),
+            nn.ConvTranspose2d(256 * expansion + 128, 128, 4, 2, 1),
+            nn.BatchNorm2d(128),
+            nn.ReLU(),
+            nn.ConvTranspose2d(128, 128, (3, 3), 1, padding=(1, 1)),
+            nn.BatchNorm2d(128),
+            nn.ReLU()
+        )
+        self.deconv3 = nn.Sequential(
+            # nn.ConvTranspose2d(128 * expansion + 32, 8, 4, 2, 1),
+            nn.ConvTranspose2d(128, 32, 4, 2, 1),
             nn.BatchNorm2d(32),
             nn.ReLU(),
             nn.ConvTranspose2d(32, 32, (3, 3), 1, padding=(1, 1)),
             nn.BatchNorm2d(32),
-            nn.ReLU()
-        )
-        self.deconv3 = nn.Sequential(
-            nn.ConvTranspose2d(128 * expansion + 32, 8, 4, 2, 1),
-            nn.BatchNorm2d(8),
-            nn.ReLU(),
-            nn.ConvTranspose2d(8, 8, (3, 3), 1, padding=(1, 1)),
-            nn.BatchNorm2d(8),
             nn.ReLU()
         )
         self.out_conv = nn.Sequential(
@@ -148,9 +149,9 @@ class SegNet2D_Seg(nn.Module):
         cat = F.interpolate(cat, size=(x.shape[2] // 8, x.shape[3] // 8),
                             mode='bilinear', align_corners=False)
         dc2 = self.deconv2(cat)
-        _c2 = F.interpolate(c2, size=dc2.shape[2:], mode='bilinear', align_corners=False)
-        cat = torch.cat((_c2, dc2), 1)
-        out = self.deconv3(cat)
+        # _c2 = F.interpolate(c2, size=dc2.shape[2:], mode='bilinear', align_corners=False)
+        # cat = torch.cat((_c2, dc2), 1)
+        out = self.deconv3(dc2)
         out = F.interpolate(out, size=x.shape[2:], mode='bilinear', align_corners=False)
         out = self.out_conv(out)
         return out
@@ -195,3 +196,25 @@ class SegNet2D_Rec(nn.Module):
         rec = F.interpolate(rec, size=x.shape[2:], mode='bilinear', align_corners=False)
         rec = self.rec_conv(rec)
         return rec
+
+
+class Discriminator(nn.Module):
+    def __init__(self, opt):
+        super(Discriminator, self):
+        if opt.dim == 2:
+            self.pool = nn.GlobalAvgPool2D()
+            resnet = resnet2d
+        else:
+            self.pool = nn.GlobalAvgPool3D()
+            resnet = resnet3d
+
+        self.base = resnet(opt)
+        expansion = self.base.expansion
+        self.flatten = nn.Flatten()
+        self.liner = nn.Linear(512 * expansion, 1)
+    
+    def forward(self, x):
+        x = self.base(x)
+        x = self.pool(x)
+        x = self.flatten(x)
+        return self.liner(x)
