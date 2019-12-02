@@ -139,7 +139,7 @@ class SegNet2D_Seg(nn.Module):
         )
         self.out_conv = nn.Sequential(
             nn.ConvTranspose2d(8, 1, 3, 1, 1),
-            nn.Sigmoid()
+            # nn.Sigmoid()
         )
 
     def forward(self, c1, c2, c3, c4, x):

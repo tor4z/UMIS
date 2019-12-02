@@ -109,7 +109,7 @@ class Trainner(nn.Module):
 
             if self.global_steps % self.opt.visual_freq == 0:
                 losses = {
-                    'image_foce_loss':  (self.opt.morph_ratio * image_foce_loss).item(),
+                    'image_foce_loss':  (self.opt.morph_ratio * image_foce_loss),
                     'rank_loss':        (self.opt.rank_ratio * rank_loss).item(),
                     'etropy_loss':      (self.opt.entropy_ratio * etropy_loss).item(),
                     'var_loss':         (self.opt.var_ratio * var_loss).item(),

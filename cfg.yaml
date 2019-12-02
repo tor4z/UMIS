@@ -30,7 +30,7 @@ morph_ratio: 0.1
 
 # == dataset ==
 dataset: hela
-image_path: /data/cwj/HeLa/img
+image_path: /data/cwj/data/HeLa/img
 label_path: null
 
 # == morphological ==
