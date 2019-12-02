@@ -139,13 +139,13 @@ class SegNet2D_Seg(nn.Module):
             nn.ReLU()
         )
         self.out_conv = nn.Sequential(
-            nn.ConvTranspose2d(8, 1, 3, 1, 1),
+            nn.ConvTranspose2d(32, 1, 3, 1, 1),
             nn.Sigmoid()
         )
 
     def forward(self, c1, c2, c3, c4, x):
-        dc1 = self.deconv1(c4)
-        cat = torch.cat((c3, dc1), 1)
+        dc1 = self.deconv1(c4.detach())
+        cat = torch.cat((c3.detach(), dc1), 1)
         cat = F.interpolate(cat, size=(x.shape[2] // 8, x.shape[3] // 8),
                             mode='bilinear', align_corners=False)
         dc2 = self.deconv2(cat)
@@ -200,7 +200,7 @@ class SegNet2D_Rec(nn.Module):
 
 class Discriminator(nn.Module):
     def __init__(self, opt):
-        super(Discriminator, self):
+        super(Discriminator, self).__init__()
         if opt.dim == 2:
             self.pool = nn.GlobalAvgPool2D()
             resnet = resnet2d
